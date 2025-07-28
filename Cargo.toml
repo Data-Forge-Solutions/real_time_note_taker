@@ -1,0 +1,33 @@
+[package]
+name = "real_time_note_taker"
+version = "0.0.1"
+edition = "2021"
+authors = ["Andrew Sims, andrew.sims@dateforgesolutions.com"]
+description = "A terminal UI tool to track meeting cost in real time based on employee salaries."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Data-Forge-Solutions/real_time_note_taker"
+homepage = "https://github.com/Data-Forge-Solutions/real_time_note_taker"
+readme = "README.md"
+keywords = ["tui", "ratatui", "meeting", "salary", "tracker"]
+categories = ["command-line-utilities", "visualization"]
+default-run = "rtnt"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.29.0"
+serde = { version = "1", features = ["derive"] }
+toml = "0.9.2"
+thiserror = "2.0.12"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
+tempfile = "3"
+
+[[bin]]
+name = "rtnt"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
