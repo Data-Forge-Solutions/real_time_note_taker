@@ -14,12 +14,7 @@ fn main() -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use assert_cmd::Command;
-
-    #[test]
-    fn runs_help() {
-        let mut cmd = Command::cargo_bin("rtnt").unwrap();
-        let assert = cmd.arg("--help").assert();
-        assert.success();
-    }
+    // The CLI behavior is tested in `tests/cli.rs` as an integration test so that
+    // `assert_cmd` can locate the compiled binary. This module is intentionally
+    // left empty.
 }
