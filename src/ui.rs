@@ -47,7 +47,7 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
             match event::read()? {
                 CEvent::Key(key) if key.code == KeyCode::Char('q') => break,
                 ev => {
-                    app.handle_event(ev).ok();
+                    app.handle_event(&ev).ok();
                 }
             }
         }
@@ -86,27 +86,32 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         })
         .collect();
 
-    let notes_list = List::new(notes).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Thick)
-            .title("Notes"),
-    );
+    let notes_list = List::new(notes)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Thick)
+                .title("Notes"),
+        )
+        .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
 
     let visible_height = usize::from(chunks[0].height.saturating_sub(2));
     let offset = app.entries.len().saturating_sub(visible_height);
     let mut state = ListState::default().with_offset(offset);
+    if let Some(sel) = app.selected() {
+        state.select(Some(sel));
+    }
     f.render_stateful_widget(notes_list, chunks[0], &mut state);
 
     let input_title = match app.mode() {
-        InputMode::EditingNote => {
+        InputMode::EditingNote | InputMode::EditingExistingNote => {
             if let Some(time) = app.note_time() {
                 format!("Note - {}", time.format("%H:%M:%S%.3f"))
             } else {
                 "Note".to_string()
             }
         }
-        InputMode::EditingSection => "Section".to_string(),
+        InputMode::EditingSection | InputMode::EditingExistingSection => "Section".to_string(),
         InputMode::Normal => "Input".to_string(),
     };
 
@@ -116,7 +121,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         .title(input_title);
     if matches!(
         app.mode(),
-        InputMode::EditingNote | InputMode::EditingSection
+        InputMode::EditingNote
+            | InputMode::EditingSection
+            | InputMode::EditingExistingNote
+            | InputMode::EditingExistingSection
     ) {
         input_block = input_block.style(Style::default().fg(Color::Yellow));
     }
@@ -124,7 +132,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     let input = Paragraph::new(app.input()).block(input_block);
     if matches!(
         app.mode(),
-        InputMode::EditingNote | InputMode::EditingSection
+        InputMode::EditingNote
+            | InputMode::EditingSection
+            | InputMode::EditingExistingNote
+            | InputMode::EditingExistingSection
     ) {
         let offset = u16::try_from(app.input().len()).unwrap_or(u16::MAX);
         f.set_cursor_position((
