@@ -4,12 +4,24 @@ use real_time_note_taker::{run, App};
 
 #[derive(Parser)]
 #[command(author, version, about)]
-struct Cli {}
+struct Cli {
+    /// Load notes from this file and save them on exit
+    #[arg(long)]
+    file: Option<std::path::PathBuf>,
+}
 
 fn main() -> std::io::Result<()> {
-    let _ = Cli::parse();
-    let app = App::new();
-    run(app)
+    let cli = Cli::parse();
+    let mut app = if let Some(ref file) = cli.file {
+        App::load_from_file(file).unwrap_or_else(|_| App::new())
+    } else {
+        App::new()
+    };
+    app = run(app)?;
+    if let Some(file) = cli.file {
+        app.save_to_file(file)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -1,11 +1,14 @@
 #![warn(clippy::pedantic)]
 use chrono::{DateTime, Local};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use serde::{Deserialize, Serialize};
+use std::fs;
 use std::io;
+use std::path::Path;
 use thiserror::Error;
 
 /// Represents a single note with timestamp.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Note {
     /// The time the note was started.
     pub timestamp: DateTime<Local>,
@@ -14,19 +17,24 @@ pub struct Note {
 }
 
 /// Represents a section with a title but no timestamp.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Section {
     /// The section title.
     pub title: String,
 }
 
 /// A single entry which may be a note or a section.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Entry {
     /// A timestamped note.
     Note(Note),
     /// A section title.
     Section(Section),
+}
+
+#[derive(Serialize, Deserialize)]
+struct SaveData {
+    entries: Vec<Entry>,
 }
 
 /// Input mode for the application.
@@ -212,6 +220,38 @@ impl App {
         self.mode = InputMode::Normal;
     }
 
+    /// Saves all entries to a TOML file.
+    ///
+    /// # Errors
+    /// Returns any I/O or serialization errors encountered.
+    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        let data = SaveData {
+            entries: self.entries.clone(),
+        };
+        let toml = toml::to_string(&data).map_err(io::Error::other)?;
+        fs::write(path, toml)
+    }
+
+    /// Loads entries from a TOML file, replacing existing ones.
+    ///
+    /// # Errors
+    /// Returns any I/O or deserialization errors encountered.
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let text = fs::read_to_string(path)?;
+        let data: SaveData = toml::from_str(&text).map_err(io::Error::other)?;
+        let mut app = Self::default();
+        app.entries = data.entries;
+        app.notes = app
+            .entries
+            .iter()
+            .filter_map(|e| match e {
+                Entry::Note(n) => Some(n.clone()),
+                Entry::Section(_) => None,
+            })
+            .collect();
+        Ok(app)
+    }
+
     /// Processes a key event in normal mode.
     fn handle_normal_key(&mut self, key: KeyEvent) {
         match key.code {
@@ -296,5 +336,24 @@ mod tests {
         assert!(app.input.is_empty());
         assert!(app.note_time.is_none());
         assert!(matches!(app.mode(), InputMode::Normal));
+    }
+
+    #[test]
+    fn save_and_load() {
+        let mut app = App::new();
+        app.start_note();
+        app.input.push_str("hello");
+        app.finalize_note();
+        app.start_section();
+        app.input.push_str("section");
+        app.finalize_section();
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("notes.toml");
+        app.save_to_file(&path).unwrap();
+
+        let loaded = App::load_from_file(&path).unwrap();
+        assert_eq!(loaded.entries, app.entries);
+        assert_eq!(loaded.notes, app.notes);
     }
 }

@@ -11,7 +11,8 @@
 //!
 //! fn main() -> std::io::Result<()> {
 //!     let app = App::new();
-//!     run(app)
+//!     let _app = run(app)?;
+//!     Ok(())
 //! }
 //! ```
 
@@ -31,7 +32,7 @@ use std::io;
 ///
 /// # See also
 /// [`App`] for manipulating the application state directly.
-pub fn run(app: App) -> io::Result<()> {
+pub fn run(app: App) -> io::Result<App> {
     let mut terminal = ui::init_terminal()?;
     let res = ui::run_ui(&mut terminal, app);
     ui::restore_terminal(&mut terminal)?;

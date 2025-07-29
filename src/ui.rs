@@ -37,7 +37,7 @@ pub fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> io
 }
 
 /// Runs the UI event loop with the provided application state.
-pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -> io::Result<()> {
+pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -> io::Result<App> {
     let tick_rate = Duration::from_millis(200);
     let mut last_tick = Instant::now();
     loop {
@@ -55,7 +55,7 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
             last_tick = Instant::now();
         }
     }
-    Ok(())
+    Ok(app)
 }
 
 fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
