@@ -189,7 +189,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::Saving
             | InputMode::Loading
     ) {
-        let offset = u16::try_from(app.input().len()).unwrap_or(u16::MAX);
+        let offset = u16::try_from(app.cursor()).unwrap_or(u16::MAX);
         f.set_cursor_position((
             chunks[1].x.saturating_add(offset.saturating_add(1)),
             chunks[1].y + 1,
