@@ -1,15 +1,25 @@
 #![warn(clippy::pedantic)]
+use clap::Parser;
+use real_time_note_taker::{run, App};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    Ok(())
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Cli {}
+
+fn main() -> std::io::Result<()> {
+    let _ = Cli::parse();
+    let app = App::new();
+    run(app)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use assert_cmd::Command;
 
     #[test]
-    fn tests() {
-        assert_eq!(0, 0);
+    fn runs_help() {
+        let mut cmd = Command::cargo_bin("rtnt").unwrap();
+        let assert = cmd.arg("--help").assert();
+        assert.success();
     }
 }
