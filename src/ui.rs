@@ -71,7 +71,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         .map(|n| {
             ListItem::new(Line::from(vec![
                 Span::styled(
-                    n.timestamp.format("%H:%M:%S").to_string(),
+                    n.timestamp.format("%H:%M:%S%.3f").to_string(),
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" - "),
@@ -90,7 +90,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
 
     let input_title = if matches!(app.mode(), InputMode::Editing) {
         if let Some(time) = app.note_time() {
-            format!("Input - {}", time.format("%H:%M:%S"))
+            format!("Input - {}", time.format("%H:%M:%S%.3f"))
         } else {
             "Input".to_string()
         }
