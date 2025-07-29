@@ -1,11 +1,15 @@
 #![warn(clippy::pedantic)]
 use chrono::{DateTime, Local};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use directories::ProjectDirs;
+use serde::{Deserialize, Serialize};
+use std::fs;
 use std::io;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Represents a single note with timestamp.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Note {
     /// The time the note was started.
     pub timestamp: DateTime<Local>,
@@ -14,20 +18,21 @@ pub struct Note {
 }
 
 /// Represents a section with a title but no timestamp.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Section {
     /// The section title.
     pub title: String,
 }
 
 /// A single entry which may be a note or a section.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Entry {
     /// A timestamped note.
     Note(Note),
     /// A section title.
     Section(Section),
 }
+
 
 /// Input mode for the application.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +47,10 @@ pub enum InputMode {
     EditingExistingNote,
     /// Editing an existing section title.
     EditingExistingSection,
+    /// Prompting for a file path to save entries.
+    Saving,
+    /// Prompting for a file path to load entries.
+    Loading,
 }
 
 impl Default for InputMode {
@@ -59,7 +68,7 @@ pub enum AppError {
 }
 
 /// Main application state.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct App {
     /// Collected entries in the order they were created.
     pub entries: Vec<Entry>,
@@ -75,9 +84,43 @@ pub struct App {
     selected: Option<usize>,
     /// Index of the entry currently being edited if editing an existing entry.
     edit_index: Option<usize>,
+    /// Directory used for saving and loading files.
+    pub save_dir: PathBuf,
+    /// Available files when loading from disk.
+    pub load_files: Vec<PathBuf>,
+    /// Selected file index when loading.
+    pub load_selected: usize,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        let save_dir = Self::default_save_dir();
+        let _ = fs::create_dir_all(&save_dir);
+        Self {
+            entries: Vec::new(),
+            notes: Vec::new(),
+            input: String::new(),
+            mode: InputMode::Normal,
+            note_time: None,
+            selected: None,
+            edit_index: None,
+            save_dir,
+            load_files: Vec::new(),
+            load_selected: 0,
+        }
+    }
 }
 
 impl App {
+    /// Returns the directory where files are saved by default.
+    #[must_use]
+    pub fn default_save_dir() -> PathBuf {
+        if let Some(dirs) = ProjectDirs::from("com", "DataForge", "rtnt") {
+            dirs.data_local_dir().to_path_buf()
+        } else {
+            std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        }
+    }
     /// Creates a new [`App`].
     #[must_use]
     pub fn new() -> Self {
@@ -161,6 +204,31 @@ impl App {
         self.mode = InputMode::EditingSection;
     }
 
+    /// Begin entering a file path to save the current entries.
+    pub fn start_save(&mut self) {
+        self.input = self.save_dir.join("notes.csv").to_string_lossy().into();
+        self.mode = InputMode::Saving;
+    }
+
+    /// Begin entering a file path to load entries from.
+    pub fn start_load(&mut self) {
+        self.load_files = fs::read_dir(&self.save_dir)
+            .ok()
+            .into_iter()
+            .flatten()
+            .filter_map(|e| {
+                let p = e.ok()?.path();
+                if p.extension().and_then(|s| s.to_str()) == Some("csv") {
+                    Some(p)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        self.load_selected = 0;
+        self.mode = InputMode::Loading;
+    }
+
     /// Finalizes the note if editing, pushing it into the note list.
     pub fn finalize_note(&mut self) {
         if let Some(idx) = self.edit_index.take() {
@@ -212,6 +280,73 @@ impl App {
         self.mode = InputMode::Normal;
     }
 
+    /// Saves all entries to a CSV file.
+    ///
+    /// # Errors
+    /// Returns any I/O or serialization errors encountered.
+    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        let mut wtr = csv::WriterBuilder::new()
+            .has_headers(false)
+            .from_path(path)?;
+        for e in &self.entries {
+            match e {
+                Entry::Note(n) => {
+                    wtr.serialize(("note", n.timestamp.to_rfc3339(), &n.text))?;
+                }
+                Entry::Section(s) => {
+                    wtr.serialize(("section", "", &s.title))?;
+                }
+            }
+        }
+        wtr.flush()?;
+        Ok(())
+    }
+
+    /// Loads entries from a CSV file, replacing existing ones.
+    ///
+    /// # Errors
+    /// Returns any I/O or deserialization errors encountered.
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(path)?;
+        let mut app = Self::default();
+        for result in rdr.records() {
+            let record = result?;
+            match record.get(0) {
+                Some("note") => {
+                    if let (Some(ts), Some(text)) = (record.get(1), record.get(2)) {
+                        let ts = DateTime::parse_from_rfc3339(ts)
+                            .map_err(io::Error::other)?
+                            .with_timezone(&Local);
+                        let note = Note { timestamp: ts, text: text.to_string() };
+                        app.notes.push(note.clone());
+                        app.entries.push(Entry::Note(note));
+                    }
+                }
+                Some("section") => {
+                    if let Some(title) = record.get(2) {
+                        app.entries.push(Entry::Section(Section {
+                            title: title.to_string(),
+                        }));
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(app)
+    }
+
+    /// Loads entries from a file, replacing the current state.
+    ///
+    /// # Errors
+    /// Returns any I/O or deserialization errors encountered.
+    pub fn load_from_file_in_place<P: AsRef<Path>>(&mut self, path: P) -> io::Result<()> {
+        let new_app = Self::load_from_file(path)?;
+        *self = new_app;
+        Ok(())
+    }
+
     /// Processes a key event in normal mode.
     fn handle_normal_key(&mut self, key: KeyEvent) {
         match key.code {
@@ -220,6 +355,8 @@ impl App {
             KeyCode::Char('e') => self.edit_selected(),
             KeyCode::Enter => self.start_note(),
             KeyCode::Char('s') => self.start_section(),
+            KeyCode::Char('w') => self.start_save(),
+            KeyCode::Char('l') => self.start_load(),
             _ => {}
         }
     }
@@ -234,7 +371,14 @@ impl App {
                 InputMode::EditingSection | InputMode::EditingExistingSection => {
                     self.finalize_section();
                 }
-                InputMode::Normal => {}
+                InputMode::Saving => {
+                    let path: String = self.input.drain(..).collect();
+                    if !path.is_empty() {
+                        self.save_to_file(path).ok();
+                    }
+                    self.mode = InputMode::Normal;
+                }
+                InputMode::Normal | InputMode::Loading => {}
             },
             KeyCode::Esc => self.cancel_entry(),
             KeyCode::Char(c)
@@ -249,6 +393,31 @@ impl App {
         }
     }
 
+    fn handle_loading_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Up => {
+                if self.load_selected > 0 {
+                    self.load_selected -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if self.load_selected + 1 < self.load_files.len() {
+                    self.load_selected += 1;
+                }
+            }
+            KeyCode::Enter => {
+                if let Some(path) = self.load_files.get(self.load_selected).cloned() {
+                    self.load_from_file_in_place(path).ok();
+                }
+                self.mode = InputMode::Normal;
+            }
+            KeyCode::Esc => {
+                self.mode = InputMode::Normal;
+            }
+            _ => {}
+        }
+    }
+
     /// Handles a terminal event.
     ///
     /// # Errors
@@ -257,10 +426,12 @@ impl App {
         if let Event::Key(key) = *event {
             match self.mode {
                 InputMode::Normal => self.handle_normal_key(key),
+                InputMode::Loading => self.handle_loading_key(key),
                 InputMode::EditingNote
                 | InputMode::EditingSection
                 | InputMode::EditingExistingNote
-                | InputMode::EditingExistingSection => self.handle_editing_key(key),
+                | InputMode::EditingExistingSection
+                | InputMode::Saving => self.handle_editing_key(key),
             }
         }
         Ok(())
@@ -296,5 +467,24 @@ mod tests {
         assert!(app.input.is_empty());
         assert!(app.note_time.is_none());
         assert!(matches!(app.mode(), InputMode::Normal));
+    }
+
+    #[test]
+    fn save_and_load() {
+        let mut app = App::new();
+        app.start_note();
+        app.input.push_str("hello");
+        app.finalize_note();
+        app.start_section();
+        app.input.push_str("section");
+        app.finalize_section();
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("notes.csv");
+        app.save_to_file(&path).unwrap();
+
+        let loaded = App::load_from_file(&path).unwrap();
+        assert_eq!(loaded.entries, app.entries);
+        assert_eq!(loaded.notes, app.notes);
     }
 }
