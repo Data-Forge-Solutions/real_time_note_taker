@@ -112,6 +112,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             }
         }
         InputMode::EditingSection | InputMode::EditingExistingSection => "Section".to_string(),
+        InputMode::Saving => "Save File".to_string(),
+        InputMode::Loading => "Load File".to_string(),
         InputMode::Normal => "Input".to_string(),
     };
 
@@ -125,6 +127,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingSection
             | InputMode::EditingExistingNote
             | InputMode::EditingExistingSection
+            | InputMode::Saving
+            | InputMode::Loading
     ) {
         input_block = input_block.style(Style::default().fg(Color::Yellow));
     }
@@ -136,6 +140,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingSection
             | InputMode::EditingExistingNote
             | InputMode::EditingExistingSection
+            | InputMode::Saving
+            | InputMode::Loading
     ) {
         let offset = u16::try_from(app.input().len()).unwrap_or(u16::MAX);
         f.set_cursor_position((

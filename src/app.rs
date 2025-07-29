@@ -50,6 +50,10 @@ pub enum InputMode {
     EditingExistingNote,
     /// Editing an existing section title.
     EditingExistingSection,
+    /// Prompting for a file path to save entries.
+    Saving,
+    /// Prompting for a file path to load entries.
+    Loading,
 }
 
 impl Default for InputMode {
@@ -169,6 +173,18 @@ impl App {
         self.mode = InputMode::EditingSection;
     }
 
+    /// Begin entering a file path to save the current entries.
+    pub fn start_save(&mut self) {
+        self.input.clear();
+        self.mode = InputMode::Saving;
+    }
+
+    /// Begin entering a file path to load entries from.
+    pub fn start_load(&mut self) {
+        self.input.clear();
+        self.mode = InputMode::Loading;
+    }
+
     /// Finalizes the note if editing, pushing it into the note list.
     pub fn finalize_note(&mut self) {
         if let Some(idx) = self.edit_index.take() {
@@ -252,6 +268,16 @@ impl App {
         Ok(app)
     }
 
+    /// Loads entries from a file, replacing the current state.
+    ///
+    /// # Errors
+    /// Returns any I/O or deserialization errors encountered.
+    pub fn load_from_file_in_place<P: AsRef<Path>>(&mut self, path: P) -> io::Result<()> {
+        let new_app = Self::load_from_file(path)?;
+        *self = new_app;
+        Ok(())
+    }
+
     /// Processes a key event in normal mode.
     fn handle_normal_key(&mut self, key: KeyEvent) {
         match key.code {
@@ -260,6 +286,8 @@ impl App {
             KeyCode::Char('e') => self.edit_selected(),
             KeyCode::Enter => self.start_note(),
             KeyCode::Char('s') => self.start_section(),
+            KeyCode::Char('w') => self.start_save(),
+            KeyCode::Char('l') => self.start_load(),
             _ => {}
         }
     }
@@ -273,6 +301,20 @@ impl App {
                 }
                 InputMode::EditingSection | InputMode::EditingExistingSection => {
                     self.finalize_section();
+                }
+                InputMode::Saving => {
+                    let path: String = self.input.drain(..).collect();
+                    if !path.is_empty() {
+                        self.save_to_file(path).ok();
+                    }
+                    self.mode = InputMode::Normal;
+                }
+                InputMode::Loading => {
+                    let path: String = self.input.drain(..).collect();
+                    if !path.is_empty() {
+                        self.load_from_file_in_place(path).ok();
+                    }
+                    self.mode = InputMode::Normal;
                 }
                 InputMode::Normal => {}
             },
@@ -300,7 +342,9 @@ impl App {
                 InputMode::EditingNote
                 | InputMode::EditingSection
                 | InputMode::EditingExistingNote
-                | InputMode::EditingExistingSection => self.handle_editing_key(key),
+                | InputMode::EditingExistingSection
+                | InputMode::Saving
+                | InputMode::Loading => self.handle_editing_key(key),
             }
         }
         Ok(())
