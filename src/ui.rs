@@ -8,7 +8,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph};
+use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
 use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
@@ -92,7 +92,11 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             .border_type(BorderType::Thick)
             .title("Notes"),
     );
-    f.render_widget(notes_list, chunks[0]);
+
+    let visible_height = usize::from(chunks[0].height.saturating_sub(2));
+    let offset = app.entries.len().saturating_sub(visible_height);
+    let mut state = ListState::default().with_offset(offset);
+    f.render_stateful_widget(notes_list, chunks[0], &mut state);
 
     let input_title = match app.mode() {
         InputMode::EditingNote => {
