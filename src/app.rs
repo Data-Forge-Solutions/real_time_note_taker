@@ -52,7 +52,7 @@ pub enum InputMode {
     Loading,
 }
 
-/// Key bindings used to control the application.
+/// Collection of keys that control navigation and editing.
 #[derive(Debug, Clone)]
 pub struct KeyBindings {
     /// Move selection up or previous.
@@ -105,7 +105,11 @@ pub enum AppError {
     Io(#[from] io::Error),
 }
 
-/// Main application state.
+/// Main application state for the note taking application.
+///
+/// `App` stores all user facing data such as the list of notes, current input
+/// buffer and UI navigation state.  It can be persisted to disk using
+/// [`save_to_file`] and restored with [`load_from_file`].
 #[derive(Debug)]
 pub struct App {
     /// Collected entries in the order they were created.
@@ -550,5 +554,100 @@ mod tests {
         let loaded = App::load_from_file(&path).unwrap();
         assert_eq!(loaded.entries, app.entries);
         assert_eq!(loaded.notes, app.notes);
+    }
+
+    #[test]
+    fn selection_navigation() {
+        let mut app = App::new();
+        app.start_note();
+        app.finalize_note();
+        app.start_section();
+        app.input.push_str("a");
+        app.finalize_section();
+
+        assert_eq!(app.selected(), Some(1));
+        app.select_previous();
+        assert_eq!(app.selected(), Some(0));
+        app.select_previous();
+        assert_eq!(app.selected(), Some(0));
+        app.select_next();
+        assert_eq!(app.selected(), Some(1));
+        app.select_next();
+        assert_eq!(app.selected(), Some(1));
+    }
+
+    #[test]
+    fn edit_existing_note() {
+        let mut app = App::new();
+        app.start_note();
+        app.input.push_str("first");
+        app.finalize_note();
+
+        app.start_note();
+        app.input.push_str("second");
+        app.finalize_note();
+
+        app.selected = Some(0);
+        app.edit_selected();
+        assert!(matches!(app.mode(), InputMode::EditingExistingNote));
+        app.input.clear();
+        app.input.push_str("updated");
+        app.finalize_note();
+        assert_eq!(app.notes[0].text, "updated");
+    }
+
+    #[test]
+    fn edit_existing_section() {
+        let mut app = App::new();
+        app.start_section();
+        app.input.push_str("sec");
+        app.finalize_section();
+        app.selected = Some(0);
+        app.edit_selected();
+        assert!(matches!(app.mode(), InputMode::EditingExistingSection));
+        app.input.clear();
+        app.input.push_str("new");
+        app.finalize_section();
+        if let Entry::Section(sec) = &app.entries[0] {
+            assert_eq!(sec.title, "new");
+        } else {
+            panic!("Expected section");
+        }
+    }
+
+    #[test]
+    fn load_in_place() {
+        let mut app = App::new();
+        app.start_note();
+        app.input.push_str("data");
+        app.finalize_note();
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.csv");
+        app.save_to_file(&path).unwrap();
+
+        let mut other = App::new();
+        other.load_from_file_in_place(&path).unwrap();
+        assert_eq!(other.entries.len(), 1);
+        if let Entry::Note(n) = &other.entries[0] {
+            assert_eq!(n.text, "data");
+        } else {
+            panic!("Expected note");
+        }
+    }
+
+    #[test]
+    fn handle_event_note_flow() {
+        let mut app = App::new();
+        let enter = Event::Key(KeyEvent::from(KeyCode::Enter));
+        app.handle_event(&enter).unwrap();
+        assert!(matches!(app.mode(), InputMode::EditingNote));
+        let a = Event::Key(KeyEvent::from(KeyCode::Char('a')));
+        let b = Event::Key(KeyEvent::from(KeyCode::Char('b')));
+        app.handle_event(&a).unwrap();
+        app.handle_event(&b).unwrap();
+        app.handle_event(&enter).unwrap();
+        assert_eq!(app.notes.len(), 1);
+        assert_eq!(app.notes[0].text, "ab");
     }
 }
