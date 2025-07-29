@@ -118,6 +118,8 @@ pub struct App {
     pub notes: Vec<Note>,
     /// Current input buffer when editing.
     input: String,
+    /// Cursor position within the input buffer.
+    cursor: usize,
     /// Current mode.
     mode: InputMode,
     /// Timestamp captured when note editing started.
@@ -144,6 +146,7 @@ impl Default for App {
             entries: Vec::new(),
             notes: Vec::new(),
             input: String::new(),
+            cursor: 0,
             mode: InputMode::Normal,
             note_time: None,
             selected: None,
@@ -204,6 +207,12 @@ impl App {
         &self.input
     }
 
+    /// Returns the cursor position within the input buffer.
+    #[must_use]
+    pub const fn cursor(&self) -> usize {
+        self.cursor
+    }
+
     /// Returns the timestamp of the note being edited if present.
     #[must_use]
     pub fn note_time(&self) -> Option<DateTime<Local>> {
@@ -239,12 +248,14 @@ impl App {
             match &self.entries[idx] {
                 Entry::Note(n) => {
                     self.input = n.text.clone();
+                    self.cursor = self.input.len();
                     self.note_time = Some(n.timestamp);
                     self.edit_index = Some(idx);
                     self.mode = InputMode::EditingExistingNote;
                 }
                 Entry::Section(s) => {
                     self.input = s.title.clone();
+                    self.cursor = self.input.len();
                     self.note_time = None;
                     self.edit_index = Some(idx);
                     self.mode = InputMode::EditingExistingSection;
@@ -257,6 +268,7 @@ impl App {
     pub fn start_note(&mut self) {
         self.note_time = Some(Local::now());
         self.input.clear();
+        self.cursor = 0;
         self.edit_index = None;
         self.mode = InputMode::EditingNote;
     }
@@ -265,6 +277,7 @@ impl App {
     pub fn start_section(&mut self) {
         self.note_time = None;
         self.input.clear();
+        self.cursor = 0;
         self.edit_index = None;
         self.mode = InputMode::EditingSection;
     }
@@ -272,6 +285,7 @@ impl App {
     /// Begin entering a file path to save the current entries.
     pub fn start_save(&mut self) {
         self.input = self.save_dir.join("notes.csv").to_string_lossy().into();
+        self.cursor = self.input.len();
         self.mode = InputMode::Saving;
     }
 
@@ -291,6 +305,8 @@ impl App {
             })
             .collect();
         self.load_selected = 0;
+        self.input.clear();
+        self.cursor = 0;
         self.mode = InputMode::Loading;
     }
 
@@ -309,6 +325,7 @@ impl App {
             }
             self.mode = InputMode::Normal;
             self.note_time = None;
+            self.cursor = 0;
         } else if let Some(time) = self.note_time.take() {
             let note = Note {
                 timestamp: time,
@@ -318,6 +335,7 @@ impl App {
             self.entries.push(Entry::Note(note));
             self.selected = Some(self.entries.len() - 1);
             self.mode = InputMode::Normal;
+            self.cursor = 0;
         }
     }
 
@@ -335,6 +353,7 @@ impl App {
             self.selected = Some(self.entries.len() - 1);
         }
         self.mode = InputMode::Normal;
+        self.cursor = 0;
     }
 
     /// Cancels the current entry editing.
@@ -342,6 +361,7 @@ impl App {
         self.input.clear();
         self.note_time = None;
         self.edit_index = None;
+        self.cursor = 0;
         self.mode = InputMode::Normal;
     }
 
@@ -444,6 +464,7 @@ impl App {
                     if !path.is_empty() {
                         self.save_to_file(path).ok();
                     }
+                    self.cursor = 0;
                     self.mode = InputMode::Normal;
                 }
                 InputMode::Normal | InputMode::Loading => {}
@@ -452,10 +473,28 @@ impl App {
             KeyCode::Char(c)
                 if key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT =>
             {
-                self.input.push(c);
+                if self.cursor >= self.input.len() {
+                    self.input.push(c);
+                } else {
+                    self.input.insert(self.cursor, c);
+                }
+                self.cursor += 1;
             }
             KeyCode::Backspace => {
-                self.input.pop();
+                if self.cursor > 0 && self.cursor <= self.input.len() {
+                    self.cursor -= 1;
+                    self.input.remove(self.cursor);
+                }
+            }
+            KeyCode::Left => {
+                if self.cursor > 0 {
+                    self.cursor -= 1;
+                }
+            }
+            KeyCode::Right => {
+                if self.cursor < self.input.len() {
+                    self.cursor += 1;
+                }
             }
             _ => {}
         }
@@ -649,5 +688,27 @@ mod tests {
         app.handle_event(&enter).unwrap();
         assert_eq!(app.notes.len(), 1);
         assert_eq!(app.notes[0].text, "ab");
+    }
+
+    #[test]
+    fn handle_left_right_navigation() {
+        let mut app = App::new();
+        let enter = Event::Key(KeyEvent::from(KeyCode::Enter));
+        app.handle_event(&enter).unwrap();
+        let a = Event::Key(KeyEvent::from(KeyCode::Char('a')));
+        let b = Event::Key(KeyEvent::from(KeyCode::Char('b')));
+        let c = Event::Key(KeyEvent::from(KeyCode::Char('c')));
+        app.handle_event(&a).unwrap();
+        app.handle_event(&b).unwrap();
+        app.handle_event(&c).unwrap();
+        let left = Event::Key(KeyEvent::from(KeyCode::Left));
+        app.handle_event(&left).unwrap();
+        app.handle_event(&left).unwrap();
+        let x = Event::Key(KeyEvent::from(KeyCode::Char('X')));
+        app.handle_event(&x).unwrap();
+        let right = Event::Key(KeyEvent::from(KeyCode::Right));
+        app.handle_event(&right).unwrap();
+        app.handle_event(&enter).unwrap();
+        assert_eq!(app.notes[0].text, "aXbc");
     }
 }
