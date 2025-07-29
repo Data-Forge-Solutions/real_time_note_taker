@@ -33,10 +33,6 @@ pub enum Entry {
     Section(Section),
 }
 
-#[derive(Serialize, Deserialize)]
-struct SaveData {
-    entries: Vec<Entry>,
-}
 
 /// Input mode for the application.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -210,7 +206,7 @@ impl App {
 
     /// Begin entering a file path to save the current entries.
     pub fn start_save(&mut self) {
-        self.input = self.save_dir.join("notes.toml").to_string_lossy().into();
+        self.input = self.save_dir.join("notes.csv").to_string_lossy().into();
         self.mode = InputMode::Saving;
     }
 
@@ -222,7 +218,7 @@ impl App {
             .flatten()
             .filter_map(|e| {
                 let p = e.ok()?.path();
-                if p.extension().and_then(|s| s.to_str()) == Some("toml") {
+                if p.extension().and_then(|s| s.to_str()) == Some("csv") {
                     Some(p)
                 } else {
                     None
@@ -284,35 +280,60 @@ impl App {
         self.mode = InputMode::Normal;
     }
 
-    /// Saves all entries to a TOML file.
+    /// Saves all entries to a CSV file.
     ///
     /// # Errors
     /// Returns any I/O or serialization errors encountered.
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        let data = SaveData {
-            entries: self.entries.clone(),
-        };
-        let toml = toml::to_string(&data).map_err(io::Error::other)?;
-        fs::write(path, toml)
+        let mut wtr = csv::WriterBuilder::new()
+            .has_headers(false)
+            .from_path(path)?;
+        for e in &self.entries {
+            match e {
+                Entry::Note(n) => {
+                    wtr.serialize(("note", n.timestamp.to_rfc3339(), &n.text))?;
+                }
+                Entry::Section(s) => {
+                    wtr.serialize(("section", "", &s.title))?;
+                }
+            }
+        }
+        wtr.flush()?;
+        Ok(())
     }
 
-    /// Loads entries from a TOML file, replacing existing ones.
+    /// Loads entries from a CSV file, replacing existing ones.
     ///
     /// # Errors
     /// Returns any I/O or deserialization errors encountered.
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        let text = fs::read_to_string(path)?;
-        let data: SaveData = toml::from_str(&text).map_err(io::Error::other)?;
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(path)?;
         let mut app = Self::default();
-        app.entries = data.entries;
-        app.notes = app
-            .entries
-            .iter()
-            .filter_map(|e| match e {
-                Entry::Note(n) => Some(n.clone()),
-                Entry::Section(_) => None,
-            })
-            .collect();
+        for result in rdr.records() {
+            let record = result?;
+            match record.get(0) {
+                Some("note") => {
+                    if let (Some(ts), Some(text)) = (record.get(1), record.get(2)) {
+                        let ts = DateTime::parse_from_rfc3339(ts)
+                            .map_err(io::Error::other)?
+                            .with_timezone(&Local);
+                        let note = Note { timestamp: ts, text: text.to_string() };
+                        app.notes.push(note.clone());
+                        app.entries.push(Entry::Note(note));
+                    }
+                }
+                Some("section") => {
+                    if let Some(title) = record.get(2) {
+                        app.entries.push(Entry::Section(Section {
+                            title: title.to_string(),
+                        }));
+                    }
+                }
+                _ => {}
+            }
+        }
         Ok(app)
     }
 
@@ -459,7 +480,7 @@ mod tests {
         app.finalize_section();
 
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("notes.toml");
+        let path = dir.path().join("notes.csv");
         app.save_to_file(&path).unwrap();
 
         let loaded = App::load_from_file(&path).unwrap();
