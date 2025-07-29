@@ -160,7 +160,7 @@ impl App {
     /// Returns the directory where files are saved by default.
     #[must_use]
     pub fn default_save_dir() -> PathBuf {
-        if let Some(dirs) = ProjectDirs::from("com", "DataForge", "rtnt") {
+        if let Some(dirs) = ProjectDirs::from("com", "DFS", "rtnt") {
             dirs.data_local_dir().to_path_buf()
         } else {
             std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
