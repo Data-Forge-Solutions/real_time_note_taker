@@ -6,9 +6,9 @@ use crossterm::terminal::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
+use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph};
 use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
@@ -80,11 +80,33 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         })
         .collect();
 
-    let notes_list = List::new(notes).block(Block::default().borders(Borders::ALL).title("Notes"));
+    let notes_list = List::new(notes).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Thick)
+            .title("Notes"),
+    );
     f.render_widget(notes_list, chunks[0]);
 
-    let input =
-        Paragraph::new(app.input()).block(Block::default().borders(Borders::ALL).title("Input"));
+    let input_title = if matches!(app.mode(), InputMode::Editing) {
+        if let Some(time) = app.note_time() {
+            format!("Input - {}", time.format("%H:%M:%S"))
+        } else {
+            "Input".to_string()
+        }
+    } else {
+        "Input".to_string()
+    };
+
+    let mut input_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Thick)
+        .title(input_title);
+    if matches!(app.mode(), InputMode::Editing) {
+        input_block = input_block.style(Style::default().fg(Color::Yellow));
+    }
+
+    let input = Paragraph::new(app.input()).block(input_block);
     if matches!(app.mode(), InputMode::Editing) {
         let offset = u16::try_from(app.input().len()).unwrap_or(u16::MAX);
         f.set_cursor_position((

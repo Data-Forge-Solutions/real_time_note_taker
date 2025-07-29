@@ -68,6 +68,12 @@ impl App {
         &self.input
     }
 
+    /// Returns the timestamp of the note being edited if present.
+    #[must_use]
+    pub fn note_time(&self) -> Option<DateTime<Local>> {
+        self.note_time
+    }
+
     /// Starts a new note capturing the current timestamp.
     pub fn start_note(&mut self) {
         self.note_time = Some(Local::now());
