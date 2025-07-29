@@ -33,7 +33,6 @@ pub enum Entry {
     Section(Section),
 }
 
-
 /// Input mode for the application.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
@@ -51,6 +50,45 @@ pub enum InputMode {
     Saving,
     /// Prompting for a file path to load entries.
     Loading,
+}
+
+/// Key bindings used to control the application.
+#[derive(Debug, Clone)]
+pub struct KeyBindings {
+    /// Move selection up or previous.
+    pub up: KeyCode,
+    /// Move selection down or next.
+    pub down: KeyCode,
+    /// Edit the currently selected entry.
+    pub edit: KeyCode,
+    /// Start entering a new note.
+    pub new_note: KeyCode,
+    /// Start entering a new section.
+    pub new_section: KeyCode,
+    /// Begin saving entries to a file.
+    pub save: KeyCode,
+    /// Begin loading entries from a file.
+    pub load: KeyCode,
+    /// Quit the application.
+    pub quit: KeyCode,
+    /// Cancel the current edit.
+    pub cancel: KeyCode,
+}
+
+impl Default for KeyBindings {
+    fn default() -> Self {
+        Self {
+            up: KeyCode::Up,
+            down: KeyCode::Down,
+            edit: KeyCode::Char('e'),
+            new_note: KeyCode::Enter,
+            new_section: KeyCode::Char('s'),
+            save: KeyCode::Char('w'),
+            load: KeyCode::Char('l'),
+            quit: KeyCode::Char('q'),
+            cancel: KeyCode::Esc,
+        }
+    }
 }
 
 impl Default for InputMode {
@@ -84,6 +122,8 @@ pub struct App {
     selected: Option<usize>,
     /// Index of the entry currently being edited if editing an existing entry.
     edit_index: Option<usize>,
+    /// Key bindings controlling the application.
+    pub keys: KeyBindings,
     /// Directory used for saving and loading files.
     pub save_dir: PathBuf,
     /// Available files when loading from disk.
@@ -104,6 +144,7 @@ impl Default for App {
             note_time: None,
             selected: None,
             edit_index: None,
+            keys: KeyBindings::default(),
             save_dir,
             load_files: Vec::new(),
             load_selected: 0,
@@ -125,6 +166,26 @@ impl App {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Creates a new [`App`] with custom key bindings.
+    #[must_use]
+    pub fn with_keybindings(keys: KeyBindings) -> Self {
+        Self {
+            keys,
+            ..Self::default()
+        }
+    }
+
+    /// Replaces the key bindings with the provided ones.
+    pub fn set_keybindings(&mut self, keys: KeyBindings) {
+        self.keys = keys;
+    }
+
+    /// Returns the current key bindings.
+    #[must_use]
+    pub fn keybindings(&self) -> &KeyBindings {
+        &self.keys
     }
 
     /// Returns current input mode.
@@ -319,7 +380,10 @@ impl App {
                         let ts = DateTime::parse_from_rfc3339(ts)
                             .map_err(io::Error::other)?
                             .with_timezone(&Local);
-                        let note = Note { timestamp: ts, text: text.to_string() };
+                        let note = Note {
+                            timestamp: ts,
+                            text: text.to_string(),
+                        };
                         app.notes.push(note.clone());
                         app.entries.push(Entry::Note(note));
                     }
@@ -350,13 +414,13 @@ impl App {
     /// Processes a key event in normal mode.
     fn handle_normal_key(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Up => self.select_previous(),
-            KeyCode::Down => self.select_next(),
-            KeyCode::Char('e') => self.edit_selected(),
-            KeyCode::Enter => self.start_note(),
-            KeyCode::Char('s') => self.start_section(),
-            KeyCode::Char('w') => self.start_save(),
-            KeyCode::Char('l') => self.start_load(),
+            c if c == self.keys.up => self.select_previous(),
+            c if c == self.keys.down => self.select_next(),
+            c if c == self.keys.edit => self.edit_selected(),
+            c if c == self.keys.new_note => self.start_note(),
+            c if c == self.keys.new_section => self.start_section(),
+            c if c == self.keys.save => self.start_save(),
+            c if c == self.keys.load => self.start_load(),
             _ => {}
         }
     }
@@ -364,7 +428,7 @@ impl App {
     /// Processes a key event in any editing mode.
     fn handle_editing_key(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Enter => match self.mode {
+            c if c == self.keys.new_note => match self.mode {
                 InputMode::EditingNote | InputMode::EditingExistingNote => {
                     self.finalize_note();
                 }
@@ -380,7 +444,7 @@ impl App {
                 }
                 InputMode::Normal | InputMode::Loading => {}
             },
-            KeyCode::Esc => self.cancel_entry(),
+            c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char(c)
                 if key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT =>
             {
@@ -395,23 +459,23 @@ impl App {
 
     fn handle_loading_key(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Up => {
+            c if c == self.keys.up => {
                 if self.load_selected > 0 {
                     self.load_selected -= 1;
                 }
             }
-            KeyCode::Down => {
+            c if c == self.keys.down => {
                 if self.load_selected + 1 < self.load_files.len() {
                     self.load_selected += 1;
                 }
             }
-            KeyCode::Enter => {
+            c if c == self.keys.new_note => {
                 if let Some(path) = self.load_files.get(self.load_selected).cloned() {
                     self.load_from_file_in_place(path).ok();
                 }
                 self.mode = InputMode::Normal;
             }
-            KeyCode::Esc => {
+            c if c == self.keys.cancel => {
                 self.mode = InputMode::Normal;
             }
             _ => {}
