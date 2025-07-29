@@ -1,20 +1,32 @@
-# real_time_note_taker
+# Real Time Note Taker
 
-A terminal user interface application for taking timestamped notes in real time. The bottom of the interface lists the active key bindings. By default press `Enter` to begin a note, type your text, and press `Enter` again to save. Press `s` to start a section and enter a title. Use the arrow keys to navigate through existing entries and press `e` to edit one. Press `Esc` to cancel an entry. Press `w` to save all notes to a file and `l` to load from a file. Files are saved in CSV format under a platform‑appropriate directory shown in the prompt and created automatically if it does not exist. Quit the application with `q`. Use `--file <PATH>` to load and save notes automatically.
+Real Time Note Taker (RTNT) is a terminal user interface application for recording timestamped notes. Notes are grouped into optional sections and stored in CSV format for easy processing by other tools. All active key bindings are shown at the bottom of the interface.
 
-Key bindings can be customized by constructing the [`App`] with [`KeyBindings`](src/app.rs) using `App::with_keybindings` or by calling `App::set_keybindings`.
+## Features
 
-When loading, an overlay window lists the files in this directory for selection.
+- Millisecond accurate timestamps
+- Section markers to organize discussions
+- Edit existing entries
+- Save and load notes to CSV files
+- Fully keyboard driven with customizable bindings
 
 ## Running
 
-```
+```bash
 cargo run --release
 ```
 
+### Custom key bindings
+
+Key bindings can be changed programmatically by constructing [`App`](src/app.rs) with [`KeyBindings`] using `App::with_keybindings` or by calling `App::set_keybindings` on an existing instance.
+
+### Automatic file mode
+
+Passing `--file <PATH>` to the binary will load notes from the given file and automatically save them back on exit.
+
 ## Library Usage
 
-```
+```rust
 use real_time_note_taker::{run, App};
 
 fn main() -> std::io::Result<()> {
@@ -23,3 +35,11 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 ```
+
+## Saving location
+
+Files are written to [`App::default_save_dir`] which resolves to a platform appropriate directory and is created on first use.
+
+## License
+
+This project is licensed under the MIT or Apache-2.0 licenses at your option.

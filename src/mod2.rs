@@ -1,3 +1,4 @@
+//! Auxiliary module with minimal contents used in tests.
 #![warn(clippy::pedantic)]
 #[cfg(test)]
 mod tests {
