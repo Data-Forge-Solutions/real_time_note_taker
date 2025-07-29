@@ -1,21 +1,50 @@
-//! # Project-NAme
+#![warn(clippy::pedantic)]
+//! # `real_time_note_taker`
 //!
-//! A library for ...
+//! A reusable library providing a terminal user interface to take timestamped
+//! notes in real time.
 //!
 //! ## Example
 //!
-//! ```rust
-//! 
+//! ```no_run
+//! use real_time_note_taker::{run, App};
+//!
+//! fn main() -> std::io::Result<()> {
+//!     let app = App::new();
+//!     run(app)
+//! }
 //! ```
 
-#![warn(clippy::pedantic)]
+mod app;
+mod ui;
 
-mod mod1;
-mod mod2;
+pub use app::{App, AppError, InputMode, Note};
+use std::io;
 
+/// Runs the real-time note taking application.
+///
+/// # Arguments
+/// * `app` - Initial application state.
+///
+/// # Errors
+/// Propagates any terminal initialization or rendering errors.
+///
+/// # See also
+/// [`App`] for manipulating the application state directly.
+pub fn run(app: App) -> io::Result<()> {
+    let mut terminal = ui::init_terminal()?;
+    let res = ui::run_ui(&mut terminal, app);
+    ui::restore_terminal(&mut terminal)?;
+    res
+}
 
-/// description
-pub use mod1;
-/// description
-pub use mod2;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn create_app() {
+        let app = App::new();
+        assert!(app.notes.is_empty());
+    }
+}
