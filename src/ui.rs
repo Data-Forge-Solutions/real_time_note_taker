@@ -15,6 +15,19 @@ use std::time::{Duration, Instant};
 
 use crate::{App, Entry, InputMode};
 
+fn key_to_string(key: &KeyCode) -> String {
+    match key {
+        KeyCode::Char(c) => c.to_string(),
+        KeyCode::Enter => "Enter".to_string(),
+        KeyCode::Esc => "Esc".to_string(),
+        KeyCode::Up => "Up".to_string(),
+        KeyCode::Down => "Down".to_string(),
+        KeyCode::Left => "Left".to_string(),
+        KeyCode::Right => "Right".to_string(),
+        other => format!("{:?}", other),
+    }
+}
+
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -70,7 +83,7 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
         let timeout = tick_rate.saturating_sub(last_tick.elapsed());
         if crossterm::event::poll(timeout)? {
             match event::read()? {
-                CEvent::Key(key) if key.code == KeyCode::Char('q') => break,
+                CEvent::Key(key) if key.code == app.keys.quit => break,
                 ev => {
                     app.handle_event(&ev).ok();
                 }
@@ -88,7 +101,14 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
+        .constraints(
+            [
+                Constraint::Min(1),
+                Constraint::Length(3),
+                Constraint::Length(1),
+            ]
+            .as_ref(),
+        )
         .split(f.area());
 
     let notes: Vec<ListItem> = app
@@ -176,6 +196,20 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         ));
     }
     f.render_widget(input, chunks[1]);
+
+    let help = vec![Span::raw(format!(
+        "{}:New {}:Section {}:Edit {}:{} {}:Save {}:Load {}:Quit",
+        key_to_string(&app.keys.new_note),
+        key_to_string(&app.keys.new_section),
+        key_to_string(&app.keys.edit),
+        key_to_string(&app.keys.up),
+        key_to_string(&app.keys.down),
+        key_to_string(&app.keys.save),
+        key_to_string(&app.keys.load),
+        key_to_string(&app.keys.quit)
+    ))];
+    let help = Paragraph::new(Line::from(help));
+    f.render_widget(help, chunks[2]);
 
     if matches!(app.mode(), InputMode::Loading) {
         let area = centered_rect(60, 60, f.area());
