@@ -1,10 +1,11 @@
 #![warn(clippy::pedantic)]
 use chrono::{DateTime, Local};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Represents a single note with timestamp.
@@ -71,7 +72,7 @@ pub enum AppError {
 }
 
 /// Main application state.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct App {
     /// Collected entries in the order they were created.
     pub entries: Vec<Entry>,
@@ -87,9 +88,43 @@ pub struct App {
     selected: Option<usize>,
     /// Index of the entry currently being edited if editing an existing entry.
     edit_index: Option<usize>,
+    /// Directory used for saving and loading files.
+    pub save_dir: PathBuf,
+    /// Available files when loading from disk.
+    pub load_files: Vec<PathBuf>,
+    /// Selected file index when loading.
+    pub load_selected: usize,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        let save_dir = Self::default_save_dir();
+        let _ = fs::create_dir_all(&save_dir);
+        Self {
+            entries: Vec::new(),
+            notes: Vec::new(),
+            input: String::new(),
+            mode: InputMode::Normal,
+            note_time: None,
+            selected: None,
+            edit_index: None,
+            save_dir,
+            load_files: Vec::new(),
+            load_selected: 0,
+        }
+    }
 }
 
 impl App {
+    /// Returns the directory where files are saved by default.
+    #[must_use]
+    pub fn default_save_dir() -> PathBuf {
+        if let Some(dirs) = ProjectDirs::from("com", "DataForge", "rtnt") {
+            dirs.data_local_dir().to_path_buf()
+        } else {
+            std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        }
+    }
     /// Creates a new [`App`].
     #[must_use]
     pub fn new() -> Self {
@@ -175,13 +210,26 @@ impl App {
 
     /// Begin entering a file path to save the current entries.
     pub fn start_save(&mut self) {
-        self.input.clear();
+        self.input = self.save_dir.join("notes.toml").to_string_lossy().into();
         self.mode = InputMode::Saving;
     }
 
     /// Begin entering a file path to load entries from.
     pub fn start_load(&mut self) {
-        self.input.clear();
+        self.load_files = fs::read_dir(&self.save_dir)
+            .ok()
+            .into_iter()
+            .flatten()
+            .filter_map(|e| {
+                let p = e.ok()?.path();
+                if p.extension().and_then(|s| s.to_str()) == Some("toml") {
+                    Some(p)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        self.load_selected = 0;
         self.mode = InputMode::Loading;
     }
 
@@ -309,14 +357,7 @@ impl App {
                     }
                     self.mode = InputMode::Normal;
                 }
-                InputMode::Loading => {
-                    let path: String = self.input.drain(..).collect();
-                    if !path.is_empty() {
-                        self.load_from_file_in_place(path).ok();
-                    }
-                    self.mode = InputMode::Normal;
-                }
-                InputMode::Normal => {}
+                InputMode::Normal | InputMode::Loading => {}
             },
             KeyCode::Esc => self.cancel_entry(),
             KeyCode::Char(c)
@@ -331,6 +372,31 @@ impl App {
         }
     }
 
+    fn handle_loading_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Up => {
+                if self.load_selected > 0 {
+                    self.load_selected -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if self.load_selected + 1 < self.load_files.len() {
+                    self.load_selected += 1;
+                }
+            }
+            KeyCode::Enter => {
+                if let Some(path) = self.load_files.get(self.load_selected).cloned() {
+                    self.load_from_file_in_place(path).ok();
+                }
+                self.mode = InputMode::Normal;
+            }
+            KeyCode::Esc => {
+                self.mode = InputMode::Normal;
+            }
+            _ => {}
+        }
+    }
+
     /// Handles a terminal event.
     ///
     /// # Errors
@@ -339,12 +405,12 @@ impl App {
         if let Event::Key(key) = *event {
             match self.mode {
                 InputMode::Normal => self.handle_normal_key(key),
+                InputMode::Loading => self.handle_loading_key(key),
                 InputMode::EditingNote
                 | InputMode::EditingSection
                 | InputMode::EditingExistingNote
                 | InputMode::EditingExistingSection
-                | InputMode::Saving
-                | InputMode::Loading => self.handle_editing_key(key),
+                | InputMode::Saving => self.handle_editing_key(key),
             }
         }
         Ok(())

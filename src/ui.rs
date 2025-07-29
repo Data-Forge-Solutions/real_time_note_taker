@@ -5,7 +5,7 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
@@ -14,6 +14,31 @@ use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
 
 use crate::{App, Entry, InputMode};
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
+}
 
 /// Initializes the terminal for TUI rendering.
 pub fn init_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
@@ -58,6 +83,7 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
     Ok(app)
 }
 
+#[allow(clippy::too_many_lines)]
 fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -112,8 +138,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             }
         }
         InputMode::EditingSection | InputMode::EditingExistingSection => "Section".to_string(),
-        InputMode::Saving => "Save File".to_string(),
-        InputMode::Loading => "Load File".to_string(),
+        InputMode::Saving => format!("Save File - {}", app.save_dir.display()),
+        InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
         InputMode::Normal => "Input".to_string(),
     };
 
@@ -150,4 +176,28 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         ));
     }
     f.render_widget(input, chunks[1]);
+
+    if matches!(app.mode(), InputMode::Loading) {
+        let area = centered_rect(60, 60, f.area());
+        let items: Vec<ListItem> = if app.load_files.is_empty() {
+            vec![ListItem::new("No files found")]
+        } else {
+            app.load_files
+                .iter()
+                .map(|p| ListItem::new(p.file_name().and_then(|n| n.to_str()).unwrap_or("")))
+                .collect()
+        };
+        let mut state = ListState::default();
+        if !app.load_files.is_empty() {
+            state.select(Some(app.load_selected));
+        }
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title("Select File")
+            .border_type(BorderType::Plain);
+        let list = List::new(items)
+            .block(block)
+            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+        f.render_stateful_widget(list, area, &mut state);
+    }
 }
