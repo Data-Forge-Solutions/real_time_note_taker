@@ -7,7 +7,7 @@ use thiserror::Error;
 /// Represents a single note with timestamp.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Note {
-    /// The time the note was started.
+    /// The time the note was entered.
     pub timestamp: DateTime<Local>,
     /// The contents of the note.
     pub text: String,
@@ -77,9 +77,9 @@ impl App {
 
     /// Finalizes the note if editing, pushing it into the note list.
     pub fn finalize_note(&mut self) {
-        if let Some(time) = self.note_time.take() {
+        if self.note_time.take().is_some() {
             self.notes.push(Note {
-                timestamp: time,
+                timestamp: Local::now(),
                 text: self.input.drain(..).collect(),
             });
             self.mode = InputMode::Normal;
@@ -179,5 +179,20 @@ mod tests {
         assert!(app.input.is_empty());
         assert!(app.note_time.is_none());
         assert!(matches!(app.mode(), InputMode::Normal));
+    }
+
+    #[test]
+    fn note_timestamp_on_finalize() {
+        use std::time::Duration;
+
+        let mut app = App::new();
+        app.start_note();
+        let start_time = app.note_time.unwrap();
+        std::thread::sleep(Duration::from_millis(10));
+        app.input.push_str("entry");
+        app.finalize_note();
+        let finalized = app.notes[0].timestamp;
+        assert!(finalized >= start_time);
+        assert_ne!(finalized, start_time);
     }
 }
