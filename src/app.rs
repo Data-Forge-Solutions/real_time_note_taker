@@ -562,7 +562,7 @@ mod tests {
         app.start_note();
         app.finalize_note();
         app.start_section();
-        app.input.push_str("a");
+        app.input.push('a');
         app.finalize_section();
 
         assert_eq!(app.selected(), Some(1));
