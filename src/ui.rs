@@ -13,7 +13,7 @@ use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
 
-use crate::{App, InputMode};
+use crate::{App, Entry, InputMode};
 
 /// Initializes the terminal for TUI rendering.
 pub fn init_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
@@ -66,17 +66,23 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         .split(f.area());
 
     let notes: Vec<ListItem> = app
-        .notes
+        .entries
         .iter()
-        .map(|n| {
-            ListItem::new(Line::from(vec![
+        .map(|e| match e {
+            Entry::Note(n) => ListItem::new(Line::from(vec![
                 Span::styled(
                     n.timestamp.format("%H:%M:%S%.3f").to_string(),
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" - "),
                 Span::raw(&n.text),
-            ]))
+            ])),
+            Entry::Section(s) => ListItem::new(Line::from(vec![Span::styled(
+                &s.title,
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            )])),
         })
         .collect();
 
@@ -88,26 +94,34 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     );
     f.render_widget(notes_list, chunks[0]);
 
-    let input_title = if matches!(app.mode(), InputMode::Editing) {
-        if let Some(time) = app.note_time() {
-            format!("Input - {}", time.format("%H:%M:%S%.3f"))
-        } else {
-            "Input".to_string()
+    let input_title = match app.mode() {
+        InputMode::EditingNote => {
+            if let Some(time) = app.note_time() {
+                format!("Note - {}", time.format("%H:%M:%S%.3f"))
+            } else {
+                "Note".to_string()
+            }
         }
-    } else {
-        "Input".to_string()
+        InputMode::EditingSection => "Section".to_string(),
+        InputMode::Normal => "Input".to_string(),
     };
 
     let mut input_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Thick)
         .title(input_title);
-    if matches!(app.mode(), InputMode::Editing) {
+    if matches!(
+        app.mode(),
+        InputMode::EditingNote | InputMode::EditingSection
+    ) {
         input_block = input_block.style(Style::default().fg(Color::Yellow));
     }
 
     let input = Paragraph::new(app.input()).block(input_block);
-    if matches!(app.mode(), InputMode::Editing) {
+    if matches!(
+        app.mode(),
+        InputMode::EditingNote | InputMode::EditingSection
+    ) {
         let offset = u16::try_from(app.input().len()).unwrap_or(u16::MAX);
         f.set_cursor_position((
             chunks[1].x.saturating_add(offset.saturating_add(1)),

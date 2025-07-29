@@ -13,13 +13,31 @@ pub struct Note {
     pub text: String,
 }
 
+/// Represents a section with a title but no timestamp.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Section {
+    /// The section title.
+    pub title: String,
+}
+
+/// A single entry which may be a note or a section.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Entry {
+    /// A timestamped note.
+    Note(Note),
+    /// A section title.
+    Section(Section),
+}
+
 /// Input mode for the application.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
     /// Normal mode where key events control the application.
     Normal,
-    /// Editing mode for entering note text.
-    Editing,
+    /// Editing mode for entering a note.
+    EditingNote,
+    /// Editing mode for entering a section title.
+    EditingSection,
 }
 
 impl Default for InputMode {
@@ -39,7 +57,9 @@ pub enum AppError {
 /// Main application state.
 #[derive(Debug, Default)]
 pub struct App {
-    /// Collected notes.
+    /// Collected entries in the order they were created.
+    pub entries: Vec<Entry>,
+    /// Collected notes for convenience.
     pub notes: Vec<Note>,
     /// Current input buffer when editing.
     input: String,
@@ -78,22 +98,41 @@ impl App {
     pub fn start_note(&mut self) {
         self.note_time = Some(Local::now());
         self.input.clear();
-        self.mode = InputMode::Editing;
+        self.mode = InputMode::EditingNote;
+    }
+
+    /// Starts a new section entry.
+    pub fn start_section(&mut self) {
+        self.note_time = None;
+        self.input.clear();
+        self.mode = InputMode::EditingSection;
     }
 
     /// Finalizes the note if editing, pushing it into the note list.
     pub fn finalize_note(&mut self) {
         if let Some(time) = self.note_time.take() {
-            self.notes.push(Note {
+            let note = Note {
                 timestamp: time,
                 text: self.input.drain(..).collect(),
-            });
+            };
+            self.notes.push(note.clone());
+            self.entries.push(Entry::Note(note));
             self.mode = InputMode::Normal;
         }
     }
 
-    /// Cancels the current note editing.
-    pub fn cancel_note(&mut self) {
+    /// Finalizes a section entry.
+    pub fn finalize_section(&mut self) {
+        let title = self.input.drain(..).collect::<String>();
+        if !title.is_empty() {
+            let section = Section { title };
+            self.entries.push(Entry::Section(section));
+        }
+        self.mode = InputMode::Normal;
+    }
+
+    /// Cancels the current entry editing.
+    pub fn cancel_entry(&mut self) {
         self.input.clear();
         self.note_time = None;
         self.mode = InputMode::Normal;
@@ -115,7 +154,16 @@ impl App {
                 self.start_note();
             }
             (
-                InputMode::Editing,
+                InputMode::Normal,
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('s'),
+                    ..
+                }),
+            ) => {
+                self.start_section();
+            }
+            (
+                InputMode::EditingNote,
                 Event::Key(KeyEvent {
                     code: KeyCode::Enter,
                     ..
@@ -124,15 +172,24 @@ impl App {
                 self.finalize_note();
             }
             (
-                InputMode::Editing,
+                InputMode::EditingSection,
+                Event::Key(KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                }),
+            ) => {
+                self.finalize_section();
+            }
+            (
+                InputMode::EditingNote | InputMode::EditingSection,
                 Event::Key(KeyEvent {
                     code: KeyCode::Esc, ..
                 }),
             ) => {
-                self.cancel_note();
+                self.cancel_entry();
             }
             (
-                InputMode::Editing,
+                InputMode::EditingNote | InputMode::EditingSection,
                 Event::Key(KeyEvent {
                     code: KeyCode::Char(c),
                     modifiers: KeyModifiers::NONE | KeyModifiers::SHIFT,
@@ -142,7 +199,7 @@ impl App {
                 self.input.push(c);
             }
             (
-                InputMode::Editing,
+                InputMode::EditingNote | InputMode::EditingSection,
                 Event::Key(KeyEvent {
                     code: KeyCode::Backspace,
                     ..
@@ -165,7 +222,7 @@ mod tests {
         let mut app = App::new();
         assert!(app.notes.is_empty());
         app.start_note();
-        assert!(matches!(app.mode(), InputMode::Editing));
+        assert!(matches!(app.mode(), InputMode::EditingNote));
         assert!(app.note_time.is_some());
         app.input.push_str("test");
         app.finalize_note();
@@ -176,11 +233,11 @@ mod tests {
     }
 
     #[test]
-    fn cancel_note() {
+    fn cancel_entry() {
         let mut app = App::new();
         app.start_note();
         app.input.push_str("discard");
-        app.cancel_note();
+        app.cancel_entry();
         assert!(app.notes.is_empty());
         assert!(app.input.is_empty());
         assert!(app.note_time.is_none());
