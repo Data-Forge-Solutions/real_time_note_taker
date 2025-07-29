@@ -7,13 +7,21 @@ use crossterm::terminal::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
+use ratatui::symbols::{border, line};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, Paragraph};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
 
 use crate::{App, Entry, InputMode};
+
+/// Border set with solid vertical lines.
+const SOLID_VERTICAL_THICK: border::Set = border::Set {
+    vertical_left: line::THICK_VERTICAL,
+    vertical_right: line::THICK_VERTICAL,
+    ..border::THICK
+};
 
 /// Initializes the terminal for TUI rendering.
 pub fn init_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
@@ -89,7 +97,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     let notes_list = List::new(notes).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_type(BorderType::Thick)
+            .border_set(SOLID_VERTICAL_THICK)
             .title("Notes"),
     );
     f.render_widget(notes_list, chunks[0]);
@@ -108,7 +116,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
 
     let mut input_block = Block::default()
         .borders(Borders::ALL)
-        .border_type(BorderType::Thick)
+        .border_set(SOLID_VERTICAL_THICK)
         .title(input_title);
     if matches!(
         app.mode(),
