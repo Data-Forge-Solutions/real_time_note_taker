@@ -47,7 +47,7 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
             match event::read()? {
                 CEvent::Key(key) if key.code == KeyCode::Char('q') => break,
                 ev => {
-                    app.handle_event(ev).ok();
+                    app.handle_event(&ev).ok();
                 }
             }
         }

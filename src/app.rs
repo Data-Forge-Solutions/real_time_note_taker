@@ -171,7 +171,7 @@ impl App {
                     .iter_mut()
                     .find(|orig| orig.timestamp == n.timestamp)
                 {
-                    orig.text = n.text.clone();
+                    orig.text.clone_from(&n.text);
                 }
             }
             self.mode = InputMode::Normal;
@@ -212,111 +212,56 @@ impl App {
         self.mode = InputMode::Normal;
     }
 
+    /// Processes a key event in normal mode.
+    fn handle_normal_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Up => self.select_previous(),
+            KeyCode::Down => self.select_next(),
+            KeyCode::Char('e') => self.edit_selected(),
+            KeyCode::Enter => self.start_note(),
+            KeyCode::Char('s') => self.start_section(),
+            _ => {}
+        }
+    }
+
+    /// Processes a key event in any editing mode.
+    fn handle_editing_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Enter => match self.mode {
+                InputMode::EditingNote | InputMode::EditingExistingNote => {
+                    self.finalize_note();
+                }
+                InputMode::EditingSection | InputMode::EditingExistingSection => {
+                    self.finalize_section();
+                }
+                InputMode::Normal => {}
+            },
+            KeyCode::Esc => self.cancel_entry(),
+            KeyCode::Char(c)
+                if key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT =>
+            {
+                self.input.push(c);
+            }
+            KeyCode::Backspace => {
+                self.input.pop();
+            }
+            _ => {}
+        }
+    }
+
     /// Handles a terminal event.
     ///
     /// # Errors
     /// Propagates any I/O errors from the terminal event system.
-    pub fn handle_event(&mut self, event: Event) -> Result<(), AppError> {
-        match (self.mode, event) {
-            (
-                InputMode::Normal,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Up, ..
-                }),
-            ) => {
-                self.select_previous();
-            }
-            (
-                InputMode::Normal,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Down,
-                    ..
-                }),
-            ) => {
-                self.select_next();
-            }
-            (
-                InputMode::Normal,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('e'),
-                    ..
-                }),
-            ) => {
-                self.edit_selected();
-            }
-            (
-                InputMode::Normal,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Enter,
-                    ..
-                }),
-            ) => {
-                self.start_note();
-            }
-            (
-                InputMode::Normal,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('s'),
-                    ..
-                }),
-            ) => {
-                self.start_section();
-            }
-            (
-                InputMode::EditingNote | InputMode::EditingExistingNote,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Enter,
-                    ..
-                }),
-            ) => {
-                self.finalize_note();
-            }
-            (
-                InputMode::EditingSection | InputMode::EditingExistingSection,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Enter,
-                    ..
-                }),
-            ) => {
-                self.finalize_section();
-            }
-            (
+    pub fn handle_event(&mut self, event: &Event) -> Result<(), AppError> {
+        if let Event::Key(key) = *event {
+            match self.mode {
+                InputMode::Normal => self.handle_normal_key(key),
                 InputMode::EditingNote
                 | InputMode::EditingSection
                 | InputMode::EditingExistingNote
-                | InputMode::EditingExistingSection,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Esc, ..
-                }),
-            ) => {
-                self.cancel_entry();
+                | InputMode::EditingExistingSection => self.handle_editing_key(key),
             }
-            (
-                InputMode::EditingNote
-                | InputMode::EditingSection
-                | InputMode::EditingExistingNote
-                | InputMode::EditingExistingSection,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char(c),
-                    modifiers: KeyModifiers::NONE | KeyModifiers::SHIFT,
-                    ..
-                }),
-            ) => {
-                self.input.push(c);
-            }
-            (
-                InputMode::EditingNote
-                | InputMode::EditingSection
-                | InputMode::EditingExistingNote
-                | InputMode::EditingExistingSection,
-                Event::Key(KeyEvent {
-                    code: KeyCode::Backspace,
-                    ..
-                }),
-            ) => {
-                self.input.pop();
-            }
-            _ => {}
         }
         Ok(())
     }
