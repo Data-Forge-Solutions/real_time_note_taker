@@ -8,7 +8,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
+use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap};
 use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
@@ -414,10 +414,11 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     } else if matches!(app.mode(), InputMode::BindWarning) {
         let area = centered_rect(60, 20, f.area());
         let msg = Paragraph::new(Line::from(vec![Span::styled(
-            "Please choose a different key bind or rebind the keybind menu first. Rebinding this key will make the key bind menu inaccessible.",
+            "Please choose a different key bind or rebind the Keys menu first.",
             Style::default().fg(theme.overlay_text),
         )]))
         .alignment(Alignment::Center)
+        .wrap(Wrap { trim: true })
         .block(
             Block::default()
                 .borders(Borders::ALL)
