@@ -24,16 +24,31 @@ pub use app::{Action, App, AppError, Entry, InputMode, Note, Section};
 use std::io;
 pub use theme::{Theme, ThemeName};
 
-/// Runs the real-time note taking application.
+/// Runs the real-time note taking application until the user exits.
 ///
 /// # Arguments
-/// * `app` - Initial application state.
+/// * `app` - Initial [`App`] state to run.
+///
+/// # Returns
+/// The final [`App`] state when the UI terminates.
+///
+/// # Examples
+/// ```no_run
+/// use real_time_note_taker::{run, App};
+///
+/// fn main() -> std::io::Result<()> {
+///     let app = App::new();
+///     let finished = run(app)?;
+///     println!("{} notes", finished.notes.len());
+///     Ok(())
+/// }
+/// ```
 ///
 /// # Errors
 /// Propagates any terminal initialization or rendering errors.
 ///
 /// # See also
-/// [`App`] for manipulating the application state directly.
+/// [`App::new`], [`App::save_to_file`]
 pub fn run(app: App) -> io::Result<App> {
     let mut terminal = ui::init_terminal()?;
     let res = ui::run_ui(&mut terminal, app);
