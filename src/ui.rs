@@ -180,7 +180,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
         InputMode::KeyBindings => "Key Bindings".to_string(),
         InputMode::ThemeSelect => "Select Theme".to_string(),
-        InputMode::TimeHack => "Time Hack - Enter time as HH:MM:SS[.mmm]".to_string(),
+        InputMode::TimeHack => "Time Hack - HH:MM:SS[.mmm]".to_string(),
         InputMode::KeyCapture => "Set Key".to_string(),
         InputMode::ConfirmReplace => "Confirm".to_string(),
         InputMode::BindWarning => "Warning".to_string(),
@@ -232,13 +232,13 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
 
     let help_spans = if matches!(app.mode(), InputMode::TimeHack) {
         vec![
+            Span::styled("Enter", Style::default().fg(theme.help_key)),
+            Span::styled(":Begin time hack ", Style::default().fg(theme.help_desc)),
             Span::styled("r", Style::default().fg(theme.help_key)),
             Span::styled(
                 ":Reset to system time ",
                 Style::default().fg(theme.help_desc),
             ),
-            Span::styled("Enter", Style::default().fg(theme.help_key)),
-            Span::styled(":Begin time hack ", Style::default().fg(theme.help_desc)),
             Span::styled(
                 key_to_string(app.keys.cancel),
                 Style::default().fg(theme.help_key),
