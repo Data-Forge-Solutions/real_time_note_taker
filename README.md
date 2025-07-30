@@ -5,17 +5,18 @@
 [![License](https://img.shields.io/crates/l/real_time_note_taker)](LICENSE)
 [![GitHub](https://img.shields.io/github/stars/Data-Forge-Solutions/real_time_note_taker?style=social)](https://github.com/Data-Forge-Solutions/real_time_note_taker)
 
-**RTNT** is a terminal user interface for taking timestamped notes with support for syncing with external clocks. It was originally developed for taking notes during flight tests, but it can be useful for many other situations. Notes can be organized into titled sections and exported to CSV for further processing. All active key bindings are always visible at the bottom of the UI.
+**RTNT** is a terminal user interface for taking timestamped notes with support for syncing with external clocks. It was originally developed for taking notes during flight tests, but it can be useful for many other situations. **RTNT** allows you to capture the time of an event with a key press, and describe it later. This is useful when many complicated events are happening in rapid succession. Notes can be organized into titled sections and exported to CSV for further processing. All active key bindings are always visible at the bottom of the UI.
 
 ![Demo of RTNT](readme_resources/demo.gif)
 
 ## Features
 
+- Capture the time an event happens with a key press and describe it later
 - Millisecond accurate timestamps
 - Section markers to organize discussions
 - Edit existing entries
 - Save and load notes from CSV
-- Fully keyboard driven with customizable bindings
+- Fully keyboard driven with customizable bindings for maximum speed and efficiency
 - Manual time hacks for syncing with external clocks
 - Current time with source indicator shown in the status line
 
