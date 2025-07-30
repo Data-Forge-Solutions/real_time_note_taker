@@ -8,7 +8,9 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use ratatui::widgets::{
+    Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap,
+};
 use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
@@ -282,6 +284,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
 
     if matches!(app.mode(), InputMode::Loading) {
         let area = centered_rect(60, 60, f.area());
+        f.render_widget(Clear, area);
         let items: Vec<ListItem> = if app.load_files.is_empty() {
             vec![ListItem::new("No files found")]
         } else {
@@ -301,7 +304,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 Style::default().fg(theme.overlay_title),
             ))
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(theme.overlay_border));
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
                 .bg(theme.overlay_highlight_bg)
@@ -313,6 +317,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
 
     if matches!(app.mode(), InputMode::KeyBindings) {
         let area = centered_rect(60, 60, f.area());
+        f.render_widget(Clear, area);
         let items: Vec<ListItem> = Action::ALL
             .iter()
             .map(|a| {
@@ -332,7 +337,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 Style::default().fg(theme.overlay_title),
             ))
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(theme.overlay_border));
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
                 .bg(theme.overlay_highlight_bg)
@@ -342,6 +348,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         f.render_stateful_widget(list, area, &mut state);
     } else if matches!(app.mode(), InputMode::ThemeSelect) {
         let area = centered_rect(60, 60, f.area());
+        f.render_widget(Clear, area);
         let items: Vec<ListItem> = ThemeName::ALL
             .iter()
             .map(|t| {
@@ -360,7 +367,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 Style::default().fg(theme.overlay_title),
             ))
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(theme.overlay_border));
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
                 .bg(theme.overlay_highlight_bg)
@@ -371,6 +379,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     } else if matches!(app.mode(), InputMode::KeyCapture) {
         if let Some(action) = app.capture_action {
             let area = centered_rect(60, 20, f.area());
+            f.render_widget(Clear, area);
             let msg = Paragraph::new(Line::from(vec![Span::raw(format!(
                 "Press new key for {} (current: {})",
                 action,
@@ -384,7 +393,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                     .title(Span::styled(
                         "Set Key",
                         Style::default().fg(theme.overlay_title),
-                    )),
+                    ))
+                    .style(Style::default().bg(theme.overlay_bg)),
             );
             f.render_widget(msg, area);
         }
@@ -393,6 +403,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             (app.pending_key, app.pending_action, app.pending_conflict)
         {
             let area = centered_rect(60, 20, f.area());
+            f.render_widget(Clear, area);
             let msg = Paragraph::new(Line::from(vec![Span::raw(format!(
                 "Bind {} to {} and unbind from {}?",
                 key_to_string(key),
@@ -407,12 +418,14 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                     .title(Span::styled(
                         "Confirm",
                         Style::default().fg(theme.overlay_title),
-                    )),
+                    ))
+                    .style(Style::default().bg(theme.overlay_bg)),
             );
             f.render_widget(msg, area);
         }
     } else if matches!(app.mode(), InputMode::BindWarning) {
         let area = centered_rect(60, 20, f.area());
+        f.render_widget(Clear, area);
         let msg = Paragraph::new(Line::from(vec![Span::styled(
             "Please choose a different key bind or rebind the Keys menu first.",
             Style::default().fg(theme.overlay_text),
@@ -426,7 +439,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 .title(Span::styled(
                     "Warning",
                     Style::default().fg(theme.overlay_title),
-                )),
+                ))
+                .style(Style::default().bg(theme.overlay_bg)),
         );
         f.render_widget(msg, area);
     }
