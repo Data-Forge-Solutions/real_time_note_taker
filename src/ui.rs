@@ -180,6 +180,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
         InputMode::KeyBindings => "Key Bindings".to_string(),
         InputMode::ThemeSelect => "Select Theme".to_string(),
+        InputMode::TimeHack => "Time Hack".to_string(),
         InputMode::KeyCapture => "Set Key".to_string(),
         InputMode::ConfirmReplace => "Confirm".to_string(),
         InputMode::BindWarning => "Warning".to_string(),
@@ -194,6 +195,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
+            | InputMode::TimeHack
     );
 
     let input_block = Block::default()
@@ -218,6 +220,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
+            | InputMode::TimeHack
     ) {
         let offset = u16::try_from(app.cursor()).unwrap_or(u16::MAX);
         f.set_cursor_position((
@@ -273,6 +276,11 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             Style::default().fg(theme.help_key),
         ),
         Span::styled(":Theme ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.time_hack),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Hack ", Style::default().fg(theme.help_desc)),
         Span::styled(
             key_to_string(app.keys.quit),
             Style::default().fg(theme.help_key),
@@ -376,6 +384,25 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 .add_modifier(Modifier::BOLD),
         );
         f.render_stateful_widget(list, area, &mut state);
+    } else if matches!(app.mode(), InputMode::TimeHack) {
+        let area = centered_rect(60, 20, f.area());
+        f.render_widget(Clear, area);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(Span::styled(
+                "Time Hack",
+                Style::default().fg(theme.overlay_title),
+            ))
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
+        let input = Paragraph::new(app.input())
+            .style(Style::default().fg(theme.overlay_text))
+            .alignment(Alignment::Center)
+            .block(block);
+        f.render_widget(input, area);
+        let offset = u16::try_from(app.cursor()).unwrap_or(u16::MAX);
+        f.set_cursor_position((area.x.saturating_add(offset + 1), area.y + 1));
     } else if matches!(app.mode(), InputMode::KeyCapture) {
         if let Some(action) = app.capture_action {
             let area = centered_rect(60, 20, f.area());

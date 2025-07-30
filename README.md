@@ -16,6 +16,7 @@
 - Edit existing entries
 - Save and load notes from CSV
 - Fully keyboard driven with customizable bindings
+- Manual time hacks for syncing with external clocks
 
 ## Installation
 

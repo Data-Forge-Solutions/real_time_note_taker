@@ -1,10 +1,11 @@
 #![warn(clippy::pedantic)]
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, NaiveTime, Duration, TimeZone};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
+use std::time::Instant;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -40,6 +41,10 @@ fn string_to_key(s: &str) -> Option<KeyCode> {
 
 fn default_theme_key() -> String {
     key_to_string(KeyCode::Char('t'))
+}
+
+fn default_time_hack_key() -> String {
+    key_to_string(KeyCode::Char('h'))
 }
 
 /// Represents a single note with timestamp.
@@ -84,6 +89,8 @@ pub enum InputMode {
     Saving,
     /// Prompting for a file path to load entries.
     Loading,
+    /// Entering a time hack value.
+    TimeHack,
     /// Selecting a key binding to change.
     KeyBindings,
     /// Capturing a new key for a binding.
@@ -110,10 +117,12 @@ pub enum Action {
     Cancel,
     Bindings,
     Theme,
+    /// Open the Time Hack overlay.
+    TimeHack,
 }
 
 impl Action {
-    pub const ALL: [Action; 11] = [
+    pub const ALL: [Action; 12] = [
         Action::Up,
         Action::Down,
         Action::Edit,
@@ -125,6 +134,7 @@ impl Action {
         Action::Cancel,
         Action::Bindings,
         Action::Theme,
+        Action::TimeHack,
     ];
 }
 
@@ -142,6 +152,7 @@ impl std::fmt::Display for Action {
             Action::Cancel => "Cancel",
             Action::Bindings => "Key Menu",
             Action::Theme => "Theme Menu",
+            Action::TimeHack => "Time Hack",
         };
         write!(f, "{name}")
     }
@@ -172,6 +183,8 @@ pub struct KeyBindings {
     pub bindings: KeyCode,
     /// Open the theme selection menu.
     pub theme: KeyCode,
+    /// Open the time hack overlay.
+    pub time_hack: KeyCode,
 }
 
 impl Default for KeyBindings {
@@ -188,6 +201,7 @@ impl Default for KeyBindings {
             cancel: KeyCode::Esc,
             bindings: KeyCode::Char('b'),
             theme: KeyCode::Char('t'),
+            time_hack: KeyCode::Char('h'),
         }
     }
 }
@@ -243,6 +257,7 @@ impl KeyBindings {
             Action::Cancel => self.cancel,
             Action::Bindings => self.bindings,
             Action::Theme => self.theme,
+            Action::TimeHack => self.time_hack,
         }
     }
 
@@ -260,6 +275,7 @@ impl KeyBindings {
             Action::Cancel => self.cancel = key,
             Action::Bindings => self.bindings = key,
             Action::Theme => self.theme = key,
+            Action::TimeHack => self.time_hack = key,
         }
     }
 
@@ -288,6 +304,8 @@ impl KeyBindings {
             Some(Action::Bindings)
         } else if self.theme == key {
             Some(Action::Theme)
+        } else if self.time_hack == key {
+            Some(Action::TimeHack)
         } else {
             None
         }
@@ -308,6 +326,8 @@ struct KeyBindingsConfig {
     bindings: String,
     #[serde(default = "default_theme_key")]
     theme: String,
+    #[serde(default = "default_time_hack_key")]
+    time_hack: String,
 }
 
 impl From<KeyBindings> for KeyBindingsConfig {
@@ -324,6 +344,7 @@ impl From<KeyBindings> for KeyBindingsConfig {
             cancel: key_to_string(k.cancel),
             bindings: key_to_string(k.bindings),
             theme: key_to_string(k.theme),
+            time_hack: key_to_string(k.time_hack),
         }
     }
 }
@@ -342,6 +363,7 @@ impl From<KeyBindingsConfig> for KeyBindings {
             cancel: string_to_key(&c.cancel).unwrap_or(KeyCode::Esc),
             bindings: string_to_key(&c.bindings).unwrap_or(KeyCode::Char('b')),
             theme: string_to_key(&c.theme).unwrap_or(KeyCode::Char('t')),
+            time_hack: string_to_key(&c.time_hack).unwrap_or(KeyCode::Char('h')),
         }
     }
 }
@@ -378,6 +400,8 @@ pub struct App {
     mode: InputMode,
     /// Timestamp captured when note editing started.
     note_time: Option<DateTime<Local>>,
+    /// Active time hack offset.
+    time_hack: Option<(NaiveTime, Instant)>,
     /// Selected entry index when navigating.
     selected: Option<usize>,
     /// Index of the entry currently being edited if editing an existing entry.
@@ -417,6 +441,7 @@ impl Default for App {
             cursor: 0,
             mode: InputMode::Normal,
             note_time: None,
+            time_hack: None,
             selected: None,
             edit_index: None,
             keys: KeyBindings::load_or_default(),
@@ -525,6 +550,21 @@ impl App {
         self.note_time
     }
 
+    /// Returns the current timestamp considering any active time hack.
+    #[must_use]
+    pub fn current_time(&self) -> DateTime<Local> {
+        if let Some((base, start)) = self.time_hack {
+            let delta = Instant::now().saturating_duration_since(start);
+            let base_dt = Local::now()
+                .date_naive()
+                .and_time(base);
+            let base = Local.from_local_datetime(&base_dt).unwrap();
+            base + Duration::from_std(delta).unwrap()
+        } else {
+            Local::now()
+        }
+    }
+
     /// Returns the currently selected entry index if any.
     #[must_use]
     pub const fn selected(&self) -> Option<usize> {
@@ -572,7 +612,7 @@ impl App {
 
     /// Starts a new note capturing the current timestamp.
     pub fn start_note(&mut self) {
-        self.note_time = Some(Local::now());
+        self.note_time = Some(self.current_time());
         self.input.clear();
         self.cursor = 0;
         self.edit_index = None;
@@ -631,6 +671,13 @@ impl App {
         self.mode = InputMode::ThemeSelect;
     }
 
+    /// Open the time hack overlay.
+    pub fn start_time_hack(&mut self) {
+        self.input.clear();
+        self.cursor = 0;
+        self.mode = InputMode::TimeHack;
+    }
+
     fn start_capture_binding(&mut self) {
         if let Some(action) = Action::ALL.get(self.keybind_selected).copied() {
             self.capture_action = Some(action);
@@ -682,6 +729,19 @@ impl App {
         }
         self.mode = InputMode::Normal;
         self.cursor = 0;
+    }
+
+    fn finalize_time_hack(&mut self) {
+        if self.input.is_empty() {
+            self.time_hack = None;
+        } else if let Ok(time) = NaiveTime::parse_from_str(&self.input, "%H:%M:%S%.f")
+            .or_else(|_| NaiveTime::parse_from_str(&self.input, "%H:%M:%S"))
+        {
+            self.time_hack = Some((time, Instant::now()));
+        }
+        self.input.clear();
+        self.cursor = 0;
+        self.mode = InputMode::Normal;
     }
 
     /// Cancels the current entry editing.
@@ -775,6 +835,7 @@ impl App {
             c if c == self.keys.load => self.start_load(),
             c if c == self.keys.bindings => self.start_keybindings(),
             c if c == self.keys.theme => self.start_theme_menu(),
+            c if c == self.keys.time_hack => self.start_time_hack(),
             _ => {}
         }
     }
@@ -797,13 +858,16 @@ impl App {
                     self.cursor = 0;
                     self.mode = InputMode::Normal;
                 }
+                InputMode::TimeHack => {
+                    self.finalize_time_hack();
+                }
                 InputMode::Normal
-                | InputMode::Loading
-                | InputMode::KeyBindings
-                | InputMode::KeyCapture
-                | InputMode::ConfirmReplace
-                | InputMode::ThemeSelect
-                | InputMode::BindWarning => {}
+                    | InputMode::Loading
+                    | InputMode::KeyBindings
+                    | InputMode::KeyCapture
+                    | InputMode::ConfirmReplace
+                    | InputMode::ThemeSelect
+                    | InputMode::BindWarning => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char(c)
@@ -986,7 +1050,8 @@ impl App {
                 | InputMode::EditingSection
                 | InputMode::EditingExistingNote
                 | InputMode::EditingExistingSection
-                | InputMode::Saving => self.handle_editing_key(key),
+                | InputMode::Saving
+                | InputMode::TimeHack => self.handle_editing_key(key),
             }
         }
         Ok(())
@@ -996,6 +1061,8 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveTime;
+    use std::time::Instant;
 
     #[test]
     fn start_and_finalize_note() {
@@ -1199,5 +1266,17 @@ mod tests {
         app.handle_bind_warning_key(KeyEvent::from(KeyCode::Char('x')));
         assert!(matches!(app.mode(), InputMode::KeyCapture));
         assert_eq!(app.capture_action, Some(Action::Save));
+    }
+
+    #[test]
+    fn time_hack_sets_clock() {
+        let mut app = App::new();
+        app.time_hack = Some((NaiveTime::from_hms_opt(1, 2, 3).unwrap(), Instant::now()));
+        app.start_note();
+        let base_dt = Local
+            .from_local_datetime(&Local::now().date_naive().and_time(NaiveTime::from_hms_opt(1, 2, 3).unwrap()))
+            .unwrap();
+        let diff = app.note_time.unwrap() - base_dt;
+        assert!(diff.num_seconds() >= 0 && diff.num_seconds() < 1);
     }
 }
