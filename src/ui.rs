@@ -178,6 +178,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::EditingSection | InputMode::EditingExistingSection => "Section".to_string(),
         InputMode::Saving => format!("Save File - {}", app.save_dir.display()),
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
+        InputMode::FileMenu => "File Management".to_string(),
+        InputMode::NewFile => format!("New File - {}", app.save_dir.display()),
         InputMode::KeyBindings => "Key Bindings".to_string(),
         InputMode::ThemeSelect => "Select Theme".to_string(),
         InputMode::TimeHack => "Time Hack - HH:MM:SS[.mmm]".to_string(),
@@ -195,6 +197,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
+            | InputMode::NewFile
             | InputMode::TimeHack
     );
 
@@ -220,6 +223,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
+            | InputMode::NewFile
             | InputMode::TimeHack
     ) {
         let offset = u16::try_from(app.cursor()).unwrap_or(u16::MAX);
@@ -276,15 +280,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             ),
             Span::styled(" ", Style::default().fg(theme.help_desc)),
             Span::styled(
-                key_to_string(app.keys.save),
+                key_to_string(app.keys.file_menu),
                 Style::default().fg(theme.help_key),
             ),
-            Span::styled(":Save ", Style::default().fg(theme.help_desc)),
-            Span::styled(
-                key_to_string(app.keys.load),
-                Style::default().fg(theme.help_key),
-            ),
-            Span::styled(":Load ", Style::default().fg(theme.help_desc)),
+            Span::styled(":File ", Style::default().fg(theme.help_desc)),
             Span::styled(
                 key_to_string(app.keys.bindings),
                 Style::default().fg(theme.help_key),
@@ -331,6 +330,34 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     ]);
     let time_widget = Paragraph::new(time_line).alignment(Alignment::Right);
     f.render_widget(time_widget, areas[1]);
+
+    if matches!(app.mode(), InputMode::FileMenu) {
+        let area = centered_rect(40, 40, f.area());
+        f.render_widget(Clear, area);
+        let items = vec![
+            ListItem::new("New File"),
+            ListItem::new("Save File"),
+            ListItem::new("Load File"),
+        ];
+        let mut state = ListState::default();
+        state.select(Some(app.file_menu_selected));
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(Span::styled(
+                "File Management",
+                Style::default().fg(theme.overlay_title),
+            ))
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(theme.overlay_highlight_bg)
+                .fg(theme.overlay_highlight_fg)
+                .add_modifier(Modifier::BOLD),
+        );
+        f.render_stateful_widget(list, area, &mut state);
+    }
 
     if matches!(app.mode(), InputMode::Loading) {
         let area = centered_rect(60, 60, f.area());
