@@ -6,7 +6,7 @@ use crossterm::terminal::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
 use ratatui::Terminal;
@@ -129,7 +129,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             Entry::Section(s) => ListItem::new(Line::from(vec![Span::styled(
                 &s.title,
                 Style::default()
-                    .fg(Color::Cyan)
+                    .fg(theme.section_fg)
                     .add_modifier(Modifier::BOLD),
             )])),
         })
