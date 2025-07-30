@@ -17,7 +17,7 @@
 - Save and load notes from CSV
 - Fully keyboard driven with customizable bindings
 - Manual time hacks for syncing with external clocks
-- Active hacked time shown in the status line
+- Current time with source indicator shown in the status line
 
 ## Installation
 

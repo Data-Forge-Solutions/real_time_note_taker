@@ -569,6 +569,16 @@ impl App {
         }
     }
 
+    /// Returns the current time source name.
+    #[must_use]
+    pub fn time_source(&self) -> &'static str {
+        if self.time_hack.is_some() {
+            "Hacked"
+        } else {
+            "System"
+        }
+    }
+
     /// Returns the currently selected entry index if any.
     #[must_use]
     pub const fn selected(&self) -> Option<usize> {

@@ -287,28 +287,30 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         ),
         Span::styled(":Quit", Style::default().fg(theme.help_desc)),
     ];
-    let hack_label = if app.time_hack().is_some() {
-        format!("Hack {}", app.current_time().format("%H:%M:%S"))
-    } else {
-        String::new()
-    };
-
-    let hack_width = u16::try_from(hack_label.len()).unwrap_or(0);
-    let left_width = chunks[2].width.saturating_sub(hack_width);
+    let now = app.current_time();
+    let time_label = format!("{} Source: {}", now.format("%H:%M:%S"), app.time_source());
+    let time_width = u16::try_from(time_label.len()).unwrap_or(0);
+    let left_width = chunks[2].width.saturating_sub(time_width);
     let areas = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Length(left_width),
-            Constraint::Length(hack_width),
+            Constraint::Length(time_width),
         ])
         .split(chunks[2]);
 
     let help = Paragraph::new(Line::from(help_spans));
     f.render_widget(help, areas[0]);
-    if !hack_label.is_empty() {
-        let hack = Paragraph::new(hack_label).alignment(Alignment::Right);
-        f.render_widget(hack, areas[1]);
-    }
+    let time_line = Line::from(vec![
+        Span::styled(
+            now.format("%H:%M:%S").to_string(),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(" Source: ", Style::default().fg(theme.help_desc)),
+        Span::styled(app.time_source(), Style::default().fg(theme.help_key)),
+    ]);
+    let time_widget = Paragraph::new(time_line).alignment(Alignment::Right);
+    f.render_widget(time_widget, areas[1]);
 
     if matches!(app.mode(), InputMode::Loading) {
         let area = centered_rect(60, 60, f.area());
