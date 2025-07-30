@@ -141,7 +141,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Thick)
                 .border_style(Style::default().fg(theme.notes_border))
-                .title("Notes"),
+                .title(Span::styled(
+                    "Notes",
+                    Style::default().fg(theme.notes_title),
+                )),
         )
         .highlight_style(
             Style::default()
@@ -189,8 +192,15 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     let input_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Thick)
-        .title(input_title)
-        .style(Style::default().fg(if editing { theme.editing_fg } else { theme.input_fg }));
+        .border_style(Style::default().fg(if editing {
+            theme.editing_fg
+        } else {
+            theme.input_fg
+        }))
+        .title(Span::styled(
+            input_title,
+            Style::default().fg(theme.input_title),
+        ));
 
     let input = Paragraph::new(app.input()).block(input_block);
     if matches!(
@@ -281,7 +291,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         }
         let block = Block::default()
             .borders(Borders::ALL)
-            .title("Select File")
+            .title(Span::styled(
+                "Select File",
+                Style::default().fg(theme.overlay_title),
+            ))
             .border_type(BorderType::Plain)
             .border_style(Style::default().fg(theme.overlay_border));
         let list = List::new(items).block(block).highlight_style(
@@ -309,7 +322,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         state.select(Some(app.keybind_selected));
         let block = Block::default()
             .borders(Borders::ALL)
-            .title("Key Bindings")
+            .title(Span::styled(
+                "Key Bindings",
+                Style::default().fg(theme.overlay_title),
+            ))
             .border_type(BorderType::Plain)
             .border_style(Style::default().fg(theme.overlay_border));
         let list = List::new(items).block(block).highlight_style(
@@ -334,7 +350,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         state.select(Some(app.theme_selected));
         let block = Block::default()
             .borders(Borders::ALL)
-            .title("Select Theme")
+            .title(Span::styled(
+                "Select Theme",
+                Style::default().fg(theme.overlay_title),
+            ))
             .border_type(BorderType::Plain)
             .border_style(Style::default().fg(theme.overlay_border));
         let list = List::new(items).block(block).highlight_style(
@@ -353,7 +372,15 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 key_to_string(app.keys.get(action))
             ))]))
             .alignment(Alignment::Center)
-            .block(Block::default().borders(Borders::ALL).title("Set Key"));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme.overlay_border))
+                    .title(Span::styled(
+                        "Set Key",
+                        Style::default().fg(theme.overlay_title),
+                    )),
+            );
             f.render_widget(msg, area);
         }
     } else if matches!(app.mode(), InputMode::ConfirmReplace) {
@@ -368,7 +395,15 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 conflict
             ))]))
             .alignment(Alignment::Center)
-            .block(Block::default().borders(Borders::ALL).title("Confirm"));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme.overlay_border))
+                    .title(Span::styled(
+                        "Confirm",
+                        Style::default().fg(theme.overlay_title),
+                    )),
+            );
             f.render_widget(msg, area);
         }
     }
