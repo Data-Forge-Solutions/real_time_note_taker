@@ -70,7 +70,8 @@ impl ThemeName {
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
     pub notes_border: Color,
-    pub help_fg: Color,
+    pub help_key: Color,
+    pub help_desc: Color,
     pub overlay_border: Color,
     pub overlay_highlight_bg: Color,
     pub overlay_highlight_fg: Color,
@@ -83,7 +84,8 @@ impl ThemeName {
         match self {
             Self::Default => Theme {
                 notes_border: Color::LightBlue,
-                help_fg: Color::LightCyan,
+                help_key: Color::LightMagenta,
+                help_desc: Color::LightCyan,
                 overlay_border: Color::LightMagenta,
                 overlay_highlight_bg: Color::LightMagenta,
                 overlay_highlight_fg: Color::Black,
@@ -91,7 +93,8 @@ impl ThemeName {
             },
             Self::Matrix => Theme {
                 notes_border: Color::LightGreen,
-                help_fg: Color::LightGreen,
+                help_key: Color::LightGreen,
+                help_desc: Color::Green,
                 overlay_border: Color::LightGreen,
                 overlay_highlight_bg: Color::Green,
                 overlay_highlight_fg: Color::Black,
@@ -99,15 +102,17 @@ impl ThemeName {
             },
             Self::CottonCandy => Theme {
                 notes_border: Color::LightMagenta,
-                help_fg: Color::LightBlue,
-                overlay_border: Color::LightRed,
+                help_key: Color::LightMagenta,
+                help_desc: Color::LightCyan,
+                overlay_border: Color::Cyan,
                 overlay_highlight_bg: Color::LightMagenta,
-                overlay_highlight_fg: Color::White,
-                editing_fg: Color::LightRed,
+                overlay_highlight_fg: Color::Cyan,
+                editing_fg: Color::LightCyan,
             },
             Self::Rainbow => Theme {
                 notes_border: Color::LightRed,
-                help_fg: Color::LightYellow,
+                help_key: Color::LightGreen,
+                help_desc: Color::LightYellow,
                 overlay_border: Color::LightGreen,
                 overlay_highlight_bg: Color::LightBlue,
                 overlay_highlight_fg: Color::LightMagenta,
@@ -115,7 +120,8 @@ impl ThemeName {
             },
             Self::BlackWhite => Theme {
                 notes_border: Color::White,
-                help_fg: Color::White,
+                help_key: Color::White,
+                help_desc: Color::White,
                 overlay_border: Color::White,
                 overlay_highlight_bg: Color::White,
                 overlay_highlight_fg: Color::Black,

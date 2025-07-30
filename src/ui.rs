@@ -203,20 +203,59 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     }
     f.render_widget(input, chunks[1]);
 
-    let help = vec![Span::raw(format!(
-        "{}:New {}:Section {}:Edit {}:{} {}:Save {}:Load {}:Keys {}:Theme {}:Quit",
-        key_to_string(app.keys.new_note),
-        key_to_string(app.keys.new_section),
-        key_to_string(app.keys.edit),
-        key_to_string(app.keys.up),
-        key_to_string(app.keys.down),
-        key_to_string(app.keys.save),
-        key_to_string(app.keys.load),
-        key_to_string(app.keys.bindings),
-        key_to_string(app.keys.theme),
-        key_to_string(app.keys.quit)
-    ))];
-    let help = Paragraph::new(Line::from(help)).style(Style::default().fg(theme.help_fg));
+    let help_spans = vec![
+        Span::styled(
+            key_to_string(app.keys.new_note),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":New ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.new_section),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Section ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.edit),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Edit ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.up),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.down),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(" ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.save),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Save ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.load),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Load ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.bindings),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Keys ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.theme),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Theme ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.quit),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Quit", Style::default().fg(theme.help_desc)),
+    ];
+    let help = Paragraph::new(Line::from(help_spans));
     f.render_widget(help, chunks[2]);
 
     if matches!(app.mode(), InputMode::Loading) {
@@ -251,7 +290,13 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         let area = centered_rect(60, 60, f.area());
         let items: Vec<ListItem> = Action::ALL
             .iter()
-            .map(|a| ListItem::new(format!("{}: {}", a, key_to_string(app.keys.get(*a)))))
+            .map(|a| {
+                let key = key_to_string(app.keys.get(*a));
+                ListItem::new(Line::from(vec![
+                    Span::styled(format!("{a}: "), Style::default().fg(theme.help_desc)),
+                    Span::styled(key, Style::default().fg(theme.help_key)),
+                ]))
+            })
             .collect();
         let mut state = ListState::default();
         state.select(Some(app.keybind_selected));
