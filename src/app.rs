@@ -897,6 +897,12 @@ impl App {
                 | InputMode::BindWarning => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
+            KeyCode::Char('r') if matches!(self.mode, InputMode::TimeHack) => {
+                self.time_hack = None;
+                self.input.clear();
+                self.cursor = 0;
+                self.mode = InputMode::Normal;
+            }
             KeyCode::Char(c)
                 if key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT =>
             {
