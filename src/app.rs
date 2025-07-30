@@ -1,12 +1,12 @@
 #![warn(clippy::pedantic)]
-use chrono::{DateTime, Local, NaiveTime, Duration, TimeZone};
+use chrono::{DateTime, Duration, Local, NaiveTime, TimeZone};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
-use std::time::Instant;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 use thiserror::Error;
 
 use crate::ThemeName;
@@ -550,14 +550,18 @@ impl App {
         self.note_time
     }
 
+    /// Returns the active time hack if set.
+    #[must_use]
+    pub fn time_hack(&self) -> Option<(NaiveTime, Instant)> {
+        self.time_hack
+    }
+
     /// Returns the current timestamp considering any active time hack.
     #[must_use]
     pub fn current_time(&self) -> DateTime<Local> {
         if let Some((base, start)) = self.time_hack {
             let delta = Instant::now().saturating_duration_since(start);
-            let base_dt = Local::now()
-                .date_naive()
-                .and_time(base);
+            let base_dt = Local::now().date_naive().and_time(base);
             let base = Local.from_local_datetime(&base_dt).unwrap();
             base + Duration::from_std(delta).unwrap()
         } else {
@@ -737,7 +741,20 @@ impl App {
         } else if let Ok(time) = NaiveTime::parse_from_str(&self.input, "%H:%M:%S%.f")
             .or_else(|_| NaiveTime::parse_from_str(&self.input, "%H:%M:%S"))
         {
+            let now = Local::now();
             self.time_hack = Some((time, Instant::now()));
+            let hacked = self.current_time();
+            let note = Note {
+                timestamp: now,
+                text: format!(
+                    "Time Hack: {} -> {}",
+                    now.format("%H:%M:%S"),
+                    hacked.format("%H:%M:%S")
+                ),
+            };
+            self.notes.push(note.clone());
+            self.entries.push(Entry::Note(note));
+            self.selected = Some(self.entries.len() - 1);
         }
         self.input.clear();
         self.cursor = 0;
@@ -862,12 +879,12 @@ impl App {
                     self.finalize_time_hack();
                 }
                 InputMode::Normal
-                    | InputMode::Loading
-                    | InputMode::KeyBindings
-                    | InputMode::KeyCapture
-                    | InputMode::ConfirmReplace
-                    | InputMode::ThemeSelect
-                    | InputMode::BindWarning => {}
+                | InputMode::Loading
+                | InputMode::KeyBindings
+                | InputMode::KeyCapture
+                | InputMode::ConfirmReplace
+                | InputMode::ThemeSelect
+                | InputMode::BindWarning => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char(c)
@@ -1274,9 +1291,27 @@ mod tests {
         app.time_hack = Some((NaiveTime::from_hms_opt(1, 2, 3).unwrap(), Instant::now()));
         app.start_note();
         let base_dt = Local
-            .from_local_datetime(&Local::now().date_naive().and_time(NaiveTime::from_hms_opt(1, 2, 3).unwrap()))
+            .from_local_datetime(
+                &Local::now()
+                    .date_naive()
+                    .and_time(NaiveTime::from_hms_opt(1, 2, 3).unwrap()),
+            )
             .unwrap();
         let diff = app.note_time.unwrap() - base_dt;
         assert!(diff.num_seconds() >= 0 && diff.num_seconds() < 1);
+    }
+
+    #[test]
+    fn finalize_time_hack_adds_entry() {
+        let mut app = App::new();
+        app.input.push_str("01:02:03");
+        app.finalize_time_hack();
+        assert!(app.time_hack.is_some());
+        assert_eq!(app.entries.len(), 1);
+        if let Entry::Note(n) = &app.entries[0] {
+            assert!(n.text.contains("Time Hack"));
+        } else {
+            panic!("Expected note");
+        }
     }
 }
