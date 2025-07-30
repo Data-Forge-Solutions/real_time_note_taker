@@ -40,6 +40,7 @@ impl ThemeName {
     }
 
     #[cfg(test)]
+    #[must_use]
     pub fn config_path_for_test() -> PathBuf {
         Self::config_path()
     }
