@@ -1,4 +1,9 @@
 # Real Time Note Taker
+[![Crates.io](https://img.shields.io/crates/v/rtnt.svg)](https://crates.io/crates/rtnt)
+[![Documentation](https://docs.rs/rtnt/badge.svg)](https://docs.rs/rtnt)
+[![CI](https://github.com/Data-Forge-Solutions/real_time_note_taker/actions/workflows/CI.yml/badge.svg)](https://github.com/Data-Forge-Solutions/real_time_note_taker/actions)
+[![License](https://img.shields.io/crates/l/rtnt)](LICENSE)
+[![GitHub](https://img.shields.io/github/stars/Data-Forge-Solutions/real_time_note_taker?style=social)](https://github.com/Data-Forge-Solutions/real_time_note_taker)
 
 **RTNT** is a terminal user interface for taking timestamped notes. Notes can be organized into titled sections and exported to CSV for further processing. All active key bindings are always visible at the bottom of the UI.
 
