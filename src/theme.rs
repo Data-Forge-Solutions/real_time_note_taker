@@ -11,15 +11,17 @@ pub enum ThemeName {
     CottonCandy,
     Rainbow,
     BlackWhite,
+    Fire,
 }
 
 impl ThemeName {
-    pub const ALL: [ThemeName; 5] = [
+    pub const ALL: [ThemeName; 6] = [
         ThemeName::Default,
         ThemeName::Matrix,
         ThemeName::CottonCandy,
         ThemeName::Rainbow,
         ThemeName::BlackWhite,
+        ThemeName::Fire,
     ];
 
     fn config_path() -> PathBuf {
@@ -63,6 +65,7 @@ impl ThemeName {
             Self::CottonCandy => "Cotton Candy",
             Self::Rainbow => "Rainbow",
             Self::BlackWhite => "Black & White",
+            Self::Fire => "Fire",
         }
     }
 }
@@ -162,6 +165,21 @@ impl ThemeName {
                 overlay_highlight_fg: Color::Black,
                 editing_fg: Color::White,
                 overlay_text: Color::White,
+            },
+            Self::Fire => Theme {
+                notes_border: Color::Red,
+                notes_highlight_bg: Color::LightRed,
+                notes_highlight_fg: Color::Black,
+                note_fg: Color::LightYellow,
+                timestamp_fg: Color::Red,
+                input_fg: Color::Red,
+                help_key: Color::Red,
+                help_desc: Color::Yellow,
+                overlay_border: Color::LightRed,
+                overlay_highlight_bg: Color::Red,
+                overlay_highlight_fg: Color::Yellow,
+                editing_fg: Color::Yellow,
+                overlay_text: Color::LightRed,
             },
         }
     }
