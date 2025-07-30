@@ -119,10 +119,12 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             Entry::Note(n) => ListItem::new(Line::from(vec![
                 Span::styled(
                     n.timestamp.format("%H:%M:%S%.3f").to_string(),
-                    Style::default().add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme.timestamp_fg)
+                        .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" - "),
-                Span::raw(&n.text),
+                Span::styled(&n.text, Style::default().fg(theme.note_fg)),
             ])),
             Entry::Section(s) => ListItem::new(Line::from(vec![Span::styled(
                 &s.title,
@@ -141,7 +143,12 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 .border_style(Style::default().fg(theme.notes_border))
                 .title("Notes"),
         )
-        .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+        .highlight_style(
+            Style::default()
+                .bg(theme.notes_highlight_bg)
+                .fg(theme.notes_highlight_fg)
+                .add_modifier(Modifier::BOLD),
+        );
 
     let visible_height = usize::from(chunks[0].height.saturating_sub(2));
     let offset = app.entries.len().saturating_sub(visible_height);
@@ -169,11 +176,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::Normal => "Input".to_string(),
     };
 
-    let mut input_block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Thick)
-        .title(input_title);
-    if matches!(
+    let editing = matches!(
         app.mode(),
         InputMode::EditingNote
             | InputMode::EditingSection
@@ -181,9 +184,13 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
-    ) {
-        input_block = input_block.style(Style::default().fg(theme.editing_fg));
-    }
+    );
+
+    let mut input_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Thick)
+        .title(input_title)
+        .style(Style::default().fg(if editing { theme.editing_fg } else { theme.input_fg }));
 
     let input = Paragraph::new(app.input()).block(input_block);
     if matches!(
@@ -316,7 +323,12 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         let area = centered_rect(60, 60, f.area());
         let items: Vec<ListItem> = ThemeName::ALL
             .iter()
-            .map(|t| ListItem::new(t.display_name()))
+            .map(|t| {
+                ListItem::new(Span::styled(
+                    t.display_name(),
+                    Style::default().fg(theme.overlay_text),
+                ))
+            })
             .collect();
         let mut state = ListState::default();
         state.select(Some(app.theme_selected));
