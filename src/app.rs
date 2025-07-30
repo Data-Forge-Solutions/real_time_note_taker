@@ -1491,4 +1491,53 @@ mod tests {
             panic!("Expected note");
         }
     }
+    #[test]
+    fn finalize_time_hack_invalid() {
+        let mut app = App::new();
+        app.input.push_str("bad");
+        app.finalize_time_hack();
+        assert!(app.time_hack.is_none());
+        assert!(app.entries.is_empty());
+        assert!(app.input.is_empty());
+        assert!(matches!(app.mode(), InputMode::Normal));
+    }
+
+    #[test]
+    fn start_load_filters_csv() {
+        let dir = tempfile::tempdir().unwrap();
+        let csv = dir.path().join("a.csv");
+        let txt = dir.path().join("b.txt");
+        std::fs::write(&csv, "").unwrap();
+        std::fs::write(&txt, "").unwrap();
+        let mut app = App::new();
+        app.save_dir = dir.path().to_path_buf();
+        app.start_load();
+        assert!(matches!(app.mode(), InputMode::Loading));
+        assert_eq!(app.load_files, vec![csv]);
+    }
+
+    #[test]
+    fn keybinding_action_lookup() {
+        let bindings = KeyBindings::default();
+        for a in Action::ALL {
+            assert_eq!(bindings.action_for_key(bindings.get(a)), Some(a));
+        }
+        assert_eq!(bindings.action_for_key(KeyCode::F(1)), None);
+    }
+
+    #[test]
+    fn time_source_changes() {
+        let mut app = App::new();
+        assert_eq!(app.time_source(), "System");
+        app.time_hack = Some((NaiveTime::from_hms_opt(0, 0, 0).unwrap(), Instant::now()));
+        assert_eq!(app.time_source(), "Hacked");
+    }
+
+    #[test]
+    fn keybindings_load_default_when_missing() {
+        let path = KeyBindings::config_path_for_test();
+        let _ = std::fs::remove_file(&path);
+        let keys = KeyBindings::load_or_default();
+        assert_eq!(keys.get(Action::Quit), KeyCode::Char('q'));
+    }
 }
