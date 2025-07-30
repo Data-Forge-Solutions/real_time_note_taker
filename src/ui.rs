@@ -82,12 +82,16 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
         terminal.draw(|f| draw(f, &app))?;
         let timeout = tick_rate.saturating_sub(last_tick.elapsed());
         if crossterm::event::poll(timeout)? {
-            match event::read()? {
-                CEvent::Key(key) if key.code == app.keys.quit => break,
-                ev => {
-                    app.handle_event(&ev).ok();
+            let ev = event::read()?;
+            if let CEvent::Key(key) = &ev {
+                if key.kind != event::KeyEventKind::Press {
+                    continue;
+                }
+                if key.code == app.keys.quit {
+                    break;
                 }
             }
+            app.handle_event(&ev).ok();
         }
         if last_tick.elapsed() >= tick_rate {
             last_tick = Instant::now();
