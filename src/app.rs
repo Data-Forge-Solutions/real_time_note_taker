@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic)]
 use chrono::{DateTime, Local};
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -954,6 +954,9 @@ impl App {
     /// Propagates any I/O errors from the terminal event system.
     pub fn handle_event(&mut self, event: &Event) -> Result<(), AppError> {
         if let Event::Key(key) = *event {
+            if key.kind != KeyEventKind::Press {
+                return Ok(());
+            }
             match self.mode {
                 InputMode::Normal => self.handle_normal_key(key),
                 InputMode::Loading => self.handle_loading_key(key),
