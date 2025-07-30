@@ -3,13 +3,13 @@ name = "real_time_note_taker"
 version = "0.1.2"
 edition = "2021"
 authors = ["Andrew Sims, andrew.sims@dataforgesolutions.com"]
-description = "A terminal UI tool to track meeting cost in real time based on employee salaries."
+description = "A terminal UI tool to take time stamped notes in real time."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Data-Forge-Solutions/real_time_note_taker"
 homepage = "https://github.com/Data-Forge-Solutions/real_time_note_taker"
 readme = "README.md"
-keywords = ["tui", "ratatui", "meeting", "salary", "tracker"]
-categories = ["command-line-utilities", "visualization"]
+keywords = ["tui", "ratatui", "note-taking", "real-time", "productivity"]
+categories = ["command-line-utilities", "text-processing", "date-and-time"]
 default-run = "rtnt"
 
 [dependencies]
