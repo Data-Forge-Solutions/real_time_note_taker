@@ -17,6 +17,7 @@ fn key_to_string(key: KeyCode) -> String {
         KeyCode::Down => "Down".to_string(),
         KeyCode::Left => "Left".to_string(),
         KeyCode::Right => "Right".to_string(),
+        KeyCode::Null => "Null".to_string(),
         other => format!("{other:?}"),
     }
 }
@@ -29,6 +30,7 @@ fn string_to_key(s: &str) -> Option<KeyCode> {
         "Down" => Some(KeyCode::Down),
         "Left" => Some(KeyCode::Left),
         "Right" => Some(KeyCode::Right),
+        "Null" => Some(KeyCode::Null),
         c if c.len() == 1 => c.chars().next().map(KeyCode::Char),
         _ => None,
     }
@@ -80,6 +82,8 @@ pub enum InputMode {
     KeyBindings,
     /// Capturing a new key for a binding.
     KeyCapture,
+    /// Confirming replacement of an existing binding.
+    ConfirmReplace,
 }
 
 /// Actions that can be bound to keys.
@@ -240,6 +244,34 @@ impl KeyBindings {
             Action::Bindings => self.bindings = key,
         }
     }
+
+    /// Returns the action currently bound to the specified key if any.
+    #[must_use]
+    pub fn action_for_key(&self, key: KeyCode) -> Option<Action> {
+        if self.up == key {
+            Some(Action::Up)
+        } else if self.down == key {
+            Some(Action::Down)
+        } else if self.edit == key {
+            Some(Action::Edit)
+        } else if self.new_note == key {
+            Some(Action::NewNote)
+        } else if self.new_section == key {
+            Some(Action::NewSection)
+        } else if self.save == key {
+            Some(Action::Save)
+        } else if self.load == key {
+            Some(Action::Load)
+        } else if self.quit == key {
+            Some(Action::Quit)
+        } else if self.cancel == key {
+            Some(Action::Cancel)
+        } else if self.bindings == key {
+            Some(Action::Bindings)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -339,6 +371,12 @@ pub struct App {
     pub keybind_selected: usize,
     /// Action being re-bound when capturing a key.
     pub capture_action: Option<Action>,
+    /// Key to assign after confirmation.
+    pub pending_key: Option<KeyCode>,
+    /// Action being assigned during confirmation.
+    pub pending_action: Option<Action>,
+    /// Existing action that currently uses the pending key.
+    pub pending_conflict: Option<Action>,
 }
 
 impl Default for App {
@@ -360,6 +398,9 @@ impl Default for App {
             load_selected: 0,
             keybind_selected: 0,
             capture_action: None,
+            pending_key: None,
+            pending_action: None,
+            pending_conflict: None,
         }
     }
 }
@@ -689,7 +730,8 @@ impl App {
                 InputMode::Normal
                 | InputMode::Loading
                 | InputMode::KeyBindings
-                | InputMode::KeyCapture => {}
+                | InputMode::KeyCapture
+                | InputMode::ConfirmReplace => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char(c)
@@ -772,11 +814,44 @@ impl App {
                     self.mode = InputMode::KeyBindings;
                 }
                 code => {
+                    if let Some(conflict) = self.keys.action_for_key(code) {
+                        if conflict != action {
+                            self.pending_key = Some(code);
+                            self.pending_action = Some(action);
+                            self.pending_conflict = Some(conflict);
+                            self.mode = InputMode::ConfirmReplace;
+                            return;
+                        }
+                    }
                     self.keys.set(action, code);
                     self.keys.save();
                     self.mode = InputMode::KeyBindings;
                 }
             }
+        }
+    }
+
+    fn handle_confirm_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Enter => {
+                if let (Some(new_key), Some(new_action), Some(conflict)) = (
+                    self.pending_key.take(),
+                    self.pending_action.take(),
+                    self.pending_conflict.take(),
+                ) {
+                    self.keys.set(conflict, KeyCode::Null);
+                    self.keys.set(new_action, new_key);
+                    self.keys.save();
+                }
+                self.mode = InputMode::KeyBindings;
+            }
+            c if c == self.keys.cancel => {
+                self.pending_key = None;
+                self.pending_action = None;
+                self.pending_conflict = None;
+                self.mode = InputMode::KeyBindings;
+            }
+            _ => {}
         }
     }
 
@@ -791,11 +866,12 @@ impl App {
                 InputMode::Loading => self.handle_loading_key(key),
                 InputMode::KeyBindings => self.handle_keybindings_key(key),
                 InputMode::KeyCapture => self.handle_capture_key(key),
+                InputMode::ConfirmReplace => self.handle_confirm_key(key),
                 InputMode::EditingNote
-                | InputMode::EditingSection
-                | InputMode::EditingExistingNote
-                | InputMode::EditingExistingSection
-                | InputMode::Saving => self.handle_editing_key(key),
+                    | InputMode::EditingSection
+                    | InputMode::EditingExistingNote
+                    | InputMode::EditingExistingSection
+                    | InputMode::Saving => self.handle_editing_key(key),
             }
         }
         Ok(())
@@ -977,5 +1053,22 @@ mod tests {
         let loaded = KeyBindings::load_or_default();
         assert_eq!(loaded.get(Action::Save), KeyCode::Char('z'));
         let _ = std::fs::remove_file(KeyBindings::config_path_for_test());
+    }
+
+    #[test]
+    fn rebind_conflict() {
+        let mut app = App::new();
+        app.start_keybindings();
+        app.capture_action = Some(Action::Load);
+        // Press key already bound to Save
+        let key = KeyEvent::from(KeyCode::Char('w'));
+        app.handle_capture_key(key);
+        assert!(matches!(app.mode(), InputMode::ConfirmReplace));
+        assert_eq!(app.pending_action, Some(Action::Load));
+        assert_eq!(app.pending_conflict, Some(Action::Save));
+        // Confirm replacement
+        app.handle_confirm_key(KeyEvent::from(KeyCode::Enter));
+        assert_eq!(app.keys.get(Action::Load), KeyCode::Char('w'));
+        assert_eq!(app.keys.get(Action::Save), KeyCode::Null);
     }
 }

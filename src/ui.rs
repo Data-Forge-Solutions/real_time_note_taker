@@ -162,6 +162,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
         InputMode::KeyBindings => "Key Bindings".to_string(),
         InputMode::KeyCapture => "Set Key".to_string(),
+        InputMode::ConfirmReplace => "Confirm".to_string(),
         InputMode::Normal => "Input".to_string(),
     };
 
@@ -264,6 +265,23 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             ))]))
             .alignment(Alignment::Center)
             .block(Block::default().borders(Borders::ALL).title("Set Key"));
+            f.render_widget(msg, area);
+        }
+    } else if matches!(app.mode(), InputMode::ConfirmReplace) {
+        if let (Some(key), Some(new_action), Some(conflict)) = (
+            app.pending_key,
+            app.pending_action,
+            app.pending_conflict,
+        ) {
+            let area = centered_rect(60, 20, f.area());
+            let msg = Paragraph::new(Line::from(vec![Span::raw(format!(
+                "Bind {} to {} and unbind from {}?",
+                key_to_string(key),
+                new_action,
+                conflict
+            ))]))
+            .alignment(Alignment::Center)
+            .block(Block::default().borders(Borders::ALL).title("Confirm"));
             f.render_widget(msg, area);
         }
     }
