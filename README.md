@@ -18,7 +18,11 @@ cargo run --release
 
 ### Custom key bindings
 
-Key bindings can be changed programmatically by constructing [`App`](src/app.rs) with [`KeyBindings`] using `App::with_keybindings` or by calling `App::set_keybindings` on an existing instance.
+Press the key shown as `Keys` in the help line to open the key binding menu. Use
+the arrow keys to select an action and press <kbd>Enter</kbd> to assign a new
+key. If the chosen key is already bound you will be asked to confirm replacing
+that binding. Bindings are stored in `keybindings.json` inside the application
+configuration directory (typically `~/.config/rtnt`).
 
 ### Automatic file mode
 

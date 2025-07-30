@@ -19,7 +19,7 @@
 mod app;
 mod ui;
 
-pub use app::{App, AppError, Entry, InputMode, Note, Section};
+pub use app::{Action, App, AppError, Entry, InputMode, Note, Section};
 use std::io;
 
 /// Runs the real-time note taking application.
