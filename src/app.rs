@@ -90,6 +90,8 @@ pub enum InputMode {
     KeyCapture,
     /// Confirming replacement of an existing binding.
     ConfirmReplace,
+    /// Warning shown when the bindings key would be lost.
+    BindWarning,
     /// Selecting a color theme.
     ThemeSelect,
 }
@@ -800,7 +802,8 @@ impl App {
                 | InputMode::KeyBindings
                 | InputMode::KeyCapture
                 | InputMode::ConfirmReplace
-                | InputMode::ThemeSelect => {}
+                | InputMode::ThemeSelect
+                | InputMode::BindWarning => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char(c)
@@ -877,12 +880,17 @@ impl App {
     }
 
     fn handle_capture_key(&mut self, key: KeyEvent) {
-        if let Some(action) = self.capture_action.take() {
+        if let Some(action) = self.capture_action {
             match key.code {
                 c if c == self.keys.cancel => {
+                    self.capture_action = None;
                     self.mode = InputMode::KeyBindings;
                 }
+                code if code == self.keys.bindings && action != Action::Bindings => {
+                    self.mode = InputMode::BindWarning;
+                }
                 code => {
+                    self.capture_action = None;
                     if let Some(conflict) = self.keys.action_for_key(code) {
                         if conflict != action {
                             self.pending_key = Some(code);
@@ -897,6 +905,15 @@ impl App {
                     self.mode = InputMode::KeyBindings;
                 }
             }
+        }
+    }
+
+    fn handle_bind_warning_key(&mut self, key: KeyEvent) {
+        if key.code == self.keys.cancel {
+            self.capture_action = None;
+            self.mode = InputMode::KeyBindings;
+        } else {
+            self.mode = InputMode::KeyCapture;
         }
     }
 
@@ -963,6 +980,7 @@ impl App {
                 InputMode::KeyBindings => self.handle_keybindings_key(key),
                 InputMode::KeyCapture => self.handle_capture_key(key),
                 InputMode::ConfirmReplace => self.handle_confirm_key(key),
+                InputMode::BindWarning => self.handle_bind_warning_key(key),
                 InputMode::ThemeSelect => self.handle_theme_key(key),
                 InputMode::EditingNote
                 | InputMode::EditingSection
@@ -1167,5 +1185,19 @@ mod tests {
         app.handle_confirm_key(KeyEvent::from(KeyCode::Enter));
         assert_eq!(app.keys.get(Action::Load), KeyCode::Char('w'));
         assert_eq!(app.keys.get(Action::Save), KeyCode::Null);
+    }
+
+    #[test]
+    fn rebind_bindings_key_warning() {
+        let mut app = App::new();
+        app.start_keybindings();
+        app.capture_action = Some(Action::Save);
+        let key = KeyEvent::from(app.keys.bindings);
+        app.handle_capture_key(key);
+        assert!(matches!(app.mode(), InputMode::BindWarning));
+        assert_eq!(app.capture_action, Some(Action::Save));
+        app.handle_bind_warning_key(KeyEvent::from(KeyCode::Char('x')));
+        assert!(matches!(app.mode(), InputMode::KeyCapture));
+        assert_eq!(app.capture_action, Some(Action::Save));
     }
 }

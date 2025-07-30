@@ -180,6 +180,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::ThemeSelect => "Select Theme".to_string(),
         InputMode::KeyCapture => "Set Key".to_string(),
         InputMode::ConfirmReplace => "Confirm".to_string(),
+        InputMode::BindWarning => "Warning".to_string(),
         InputMode::Normal => "Input".to_string(),
     };
 
@@ -410,5 +411,22 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             );
             f.render_widget(msg, area);
         }
+    } else if matches!(app.mode(), InputMode::BindWarning) {
+        let area = centered_rect(60, 20, f.area());
+        let msg = Paragraph::new(Line::from(vec![Span::styled(
+            "Please choose a different key bind or rebind the keybind menu first. Rebinding this key will make the key bind menu inaccessible.",
+            Style::default().fg(theme.overlay_text),
+        )]))
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme.overlay_border))
+                .title(Span::styled(
+                    "Warning",
+                    Style::default().fg(theme.overlay_title),
+                )),
+        );
+        f.render_widget(msg, area);
     }
 }
