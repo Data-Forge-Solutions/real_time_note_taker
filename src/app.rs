@@ -117,7 +117,7 @@ pub enum Action {
     Cancel,
     Bindings,
     Theme,
-    /// Open the Time Hack overlay.
+    /// Open the Time Hack input.
     TimeHack,
 }
 
@@ -183,7 +183,7 @@ pub struct KeyBindings {
     pub bindings: KeyCode,
     /// Open the theme selection menu.
     pub theme: KeyCode,
-    /// Open the time hack overlay.
+    /// Open the time hack input.
     pub time_hack: KeyCode,
 }
 
@@ -685,7 +685,7 @@ impl App {
         self.mode = InputMode::ThemeSelect;
     }
 
-    /// Open the time hack overlay.
+    /// Open the time hack input.
     pub fn start_time_hack(&mut self) {
         self.input.clear();
         self.cursor = 0;
