@@ -5,7 +5,7 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
@@ -13,7 +13,7 @@ use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
 
-use crate::{App, Entry, InputMode};
+use crate::{Action, App, Entry, InputMode};
 
 fn key_to_string(key: KeyCode) -> String {
     match key {
@@ -160,6 +160,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::EditingSection | InputMode::EditingExistingSection => "Section".to_string(),
         InputMode::Saving => format!("Save File - {}", app.save_dir.display()),
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
+        InputMode::KeyBindings => "Key Bindings".to_string(),
+        InputMode::KeyCapture => "Set Key".to_string(),
         InputMode::Normal => "Input".to_string(),
     };
 
@@ -198,7 +200,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     f.render_widget(input, chunks[1]);
 
     let help = vec![Span::raw(format!(
-        "{}:New {}:Section {}:Edit {}:{} {}:Save {}:Load {}:Quit",
+        "{}:New {}:Section {}:Edit {}:{} {}:Save {}:Load {}:Keys {}:Quit",
         key_to_string(app.keys.new_note),
         key_to_string(app.keys.new_section),
         key_to_string(app.keys.edit),
@@ -206,6 +208,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         key_to_string(app.keys.down),
         key_to_string(app.keys.save),
         key_to_string(app.keys.load),
+        key_to_string(app.keys.bindings),
         key_to_string(app.keys.quit)
     ))];
     let help = Paragraph::new(Line::from(help));
@@ -233,5 +236,35 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             .block(block)
             .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
         f.render_stateful_widget(list, area, &mut state);
+    }
+
+    if matches!(app.mode(), InputMode::KeyBindings) {
+        let area = centered_rect(60, 60, f.area());
+        let items: Vec<ListItem> = Action::ALL
+            .iter()
+            .map(|a| ListItem::new(format!("{}: {}", a, key_to_string(app.keys.get(*a)))))
+            .collect();
+        let mut state = ListState::default();
+        state.select(Some(app.keybind_selected));
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title("Key Bindings")
+            .border_type(BorderType::Plain);
+        let list = List::new(items)
+            .block(block)
+            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+        f.render_stateful_widget(list, area, &mut state);
+    } else if matches!(app.mode(), InputMode::KeyCapture) {
+        if let Some(action) = app.capture_action {
+            let area = centered_rect(60, 20, f.area());
+            let msg = Paragraph::new(Line::from(vec![Span::raw(format!(
+                "Press new key for {} (current: {})",
+                action,
+                key_to_string(app.keys.get(action))
+            ))]))
+            .alignment(Alignment::Center)
+            .block(Block::default().borders(Borders::ALL).title("Set Key"));
+            f.render_widget(msg, area);
+        }
     }
 }

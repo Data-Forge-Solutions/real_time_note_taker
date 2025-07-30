@@ -8,6 +8,32 @@ use std::io;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+fn key_to_string(key: KeyCode) -> String {
+    match key {
+        KeyCode::Char(c) => c.to_string(),
+        KeyCode::Enter => "Enter".to_string(),
+        KeyCode::Esc => "Esc".to_string(),
+        KeyCode::Up => "Up".to_string(),
+        KeyCode::Down => "Down".to_string(),
+        KeyCode::Left => "Left".to_string(),
+        KeyCode::Right => "Right".to_string(),
+        other => format!("{other:?}"),
+    }
+}
+
+fn string_to_key(s: &str) -> Option<KeyCode> {
+    match s {
+        "Enter" => Some(KeyCode::Enter),
+        "Esc" => Some(KeyCode::Esc),
+        "Up" => Some(KeyCode::Up),
+        "Down" => Some(KeyCode::Down),
+        "Left" => Some(KeyCode::Left),
+        "Right" => Some(KeyCode::Right),
+        c if c.len() == 1 => c.chars().next().map(KeyCode::Char),
+        _ => None,
+    }
+}
+
 /// Represents a single note with timestamp.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Note {
@@ -50,6 +76,58 @@ pub enum InputMode {
     Saving,
     /// Prompting for a file path to load entries.
     Loading,
+    /// Selecting a key binding to change.
+    KeyBindings,
+    /// Capturing a new key for a binding.
+    KeyCapture,
+}
+
+/// Actions that can be bound to keys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Action {
+    Up,
+    Down,
+    Edit,
+    NewNote,
+    NewSection,
+    Save,
+    Load,
+    Quit,
+    Cancel,
+    Bindings,
+}
+
+impl Action {
+    pub const ALL: [Action; 10] = [
+        Action::Up,
+        Action::Down,
+        Action::Edit,
+        Action::NewNote,
+        Action::NewSection,
+        Action::Save,
+        Action::Load,
+        Action::Quit,
+        Action::Cancel,
+        Action::Bindings,
+    ];
+}
+
+impl std::fmt::Display for Action {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Action::Up => "Up",
+            Action::Down => "Down",
+            Action::Edit => "Edit",
+            Action::NewNote => "New Note",
+            Action::NewSection => "New Section",
+            Action::Save => "Save",
+            Action::Load => "Load",
+            Action::Quit => "Quit",
+            Action::Cancel => "Cancel",
+            Action::Bindings => "Key Menu",
+        };
+        write!(f, "{name}")
+    }
 }
 
 /// Collection of keys that control navigation and editing.
@@ -73,6 +151,8 @@ pub struct KeyBindings {
     pub quit: KeyCode,
     /// Cancel the current edit.
     pub cancel: KeyCode,
+    /// Open the key bindings menu.
+    pub bindings: KeyCode,
 }
 
 impl Default for KeyBindings {
@@ -87,6 +167,125 @@ impl Default for KeyBindings {
             load: KeyCode::Char('l'),
             quit: KeyCode::Char('q'),
             cancel: KeyCode::Esc,
+            bindings: KeyCode::Char('b'),
+        }
+    }
+}
+
+impl KeyBindings {
+    fn config_path() -> PathBuf {
+        if let Some(dirs) = ProjectDirs::from("com", "DFS", "rtnt") {
+            dirs.config_dir().join("keybindings.json")
+        } else {
+            PathBuf::from("keybindings.json")
+        }
+    }
+
+    #[cfg(test)]
+    pub fn config_path_for_test() -> PathBuf {
+        Self::config_path()
+    }
+
+    /// Loads key bindings from the configuration file or returns defaults.
+    #[must_use]
+    pub fn load_or_default() -> Self {
+        let path = Self::config_path();
+        if let Ok(data) = fs::read_to_string(&path) {
+            if let Ok(cfg) = serde_json::from_str::<KeyBindingsConfig>(&data) {
+                return cfg.into();
+            }
+        }
+        Self::default()
+    }
+
+    /// Saves the current key bindings to the configuration file.
+    pub fn save(&self) {
+        if let Some(parent) = Self::config_path().parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(data) = serde_json::to_string_pretty(&KeyBindingsConfig::from(self.clone())) {
+            let _ = fs::write(Self::config_path(), data);
+        }
+    }
+
+    /// Returns the key bound to the given action.
+    #[must_use]
+    pub fn get(&self, action: Action) -> KeyCode {
+        match action {
+            Action::Up => self.up,
+            Action::Down => self.down,
+            Action::Edit => self.edit,
+            Action::NewNote => self.new_note,
+            Action::NewSection => self.new_section,
+            Action::Save => self.save,
+            Action::Load => self.load,
+            Action::Quit => self.quit,
+            Action::Cancel => self.cancel,
+            Action::Bindings => self.bindings,
+        }
+    }
+
+    /// Sets the key for the given action.
+    pub fn set(&mut self, action: Action, key: KeyCode) {
+        match action {
+            Action::Up => self.up = key,
+            Action::Down => self.down = key,
+            Action::Edit => self.edit = key,
+            Action::NewNote => self.new_note = key,
+            Action::NewSection => self.new_section = key,
+            Action::Save => self.save = key,
+            Action::Load => self.load = key,
+            Action::Quit => self.quit = key,
+            Action::Cancel => self.cancel = key,
+            Action::Bindings => self.bindings = key,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct KeyBindingsConfig {
+    up: String,
+    down: String,
+    edit: String,
+    new_note: String,
+    new_section: String,
+    save: String,
+    load: String,
+    quit: String,
+    cancel: String,
+    bindings: String,
+}
+
+impl From<KeyBindings> for KeyBindingsConfig {
+    fn from(k: KeyBindings) -> Self {
+        Self {
+            up: key_to_string(k.up),
+            down: key_to_string(k.down),
+            edit: key_to_string(k.edit),
+            new_note: key_to_string(k.new_note),
+            new_section: key_to_string(k.new_section),
+            save: key_to_string(k.save),
+            load: key_to_string(k.load),
+            quit: key_to_string(k.quit),
+            cancel: key_to_string(k.cancel),
+            bindings: key_to_string(k.bindings),
+        }
+    }
+}
+
+impl From<KeyBindingsConfig> for KeyBindings {
+    fn from(c: KeyBindingsConfig) -> Self {
+        Self {
+            up: string_to_key(&c.up).unwrap_or(KeyCode::Up),
+            down: string_to_key(&c.down).unwrap_or(KeyCode::Down),
+            edit: string_to_key(&c.edit).unwrap_or(KeyCode::Char('e')),
+            new_note: string_to_key(&c.new_note).unwrap_or(KeyCode::Enter),
+            new_section: string_to_key(&c.new_section).unwrap_or(KeyCode::Char('s')),
+            save: string_to_key(&c.save).unwrap_or(KeyCode::Char('w')),
+            load: string_to_key(&c.load).unwrap_or(KeyCode::Char('l')),
+            quit: string_to_key(&c.quit).unwrap_or(KeyCode::Char('q')),
+            cancel: string_to_key(&c.cancel).unwrap_or(KeyCode::Esc),
+            bindings: string_to_key(&c.bindings).unwrap_or(KeyCode::Char('b')),
         }
     }
 }
@@ -136,6 +335,10 @@ pub struct App {
     pub load_files: Vec<PathBuf>,
     /// Selected file index when loading.
     pub load_selected: usize,
+    /// Selected binding index when editing key bindings.
+    pub keybind_selected: usize,
+    /// Action being re-bound when capturing a key.
+    pub capture_action: Option<Action>,
 }
 
 impl Default for App {
@@ -151,10 +354,12 @@ impl Default for App {
             note_time: None,
             selected: None,
             edit_index: None,
-            keys: KeyBindings::default(),
+            keys: KeyBindings::load_or_default(),
             save_dir,
             load_files: Vec::new(),
             load_selected: 0,
+            keybind_selected: 0,
+            capture_action: None,
         }
     }
 }
@@ -310,6 +515,19 @@ impl App {
         self.mode = InputMode::Loading;
     }
 
+    /// Open the key bindings menu.
+    pub fn start_keybindings(&mut self) {
+        self.keybind_selected = 0;
+        self.mode = InputMode::KeyBindings;
+    }
+
+    fn start_capture_binding(&mut self) {
+        if let Some(action) = Action::ALL.get(self.keybind_selected).copied() {
+            self.capture_action = Some(action);
+            self.mode = InputMode::KeyCapture;
+        }
+    }
+
     /// Finalizes the note if editing, pushing it into the note list.
     pub fn finalize_note(&mut self) {
         if let Some(idx) = self.edit_index.take() {
@@ -445,6 +663,7 @@ impl App {
             c if c == self.keys.new_section => self.start_section(),
             c if c == self.keys.save => self.start_save(),
             c if c == self.keys.load => self.start_load(),
+            c if c == self.keys.bindings => self.start_keybindings(),
             _ => {}
         }
     }
@@ -467,7 +686,10 @@ impl App {
                     self.cursor = 0;
                     self.mode = InputMode::Normal;
                 }
-                InputMode::Normal | InputMode::Loading => {}
+                InputMode::Normal
+                | InputMode::Loading
+                | InputMode::KeyBindings
+                | InputMode::KeyCapture => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char(c)
@@ -525,6 +747,39 @@ impl App {
         }
     }
 
+    fn handle_keybindings_key(&mut self, key: KeyEvent) {
+        match key.code {
+            c if c == self.keys.up => {
+                if self.keybind_selected > 0 {
+                    self.keybind_selected -= 1;
+                }
+            }
+            c if c == self.keys.down => {
+                if self.keybind_selected + 1 < Action::ALL.len() {
+                    self.keybind_selected += 1;
+                }
+            }
+            KeyCode::Enter => self.start_capture_binding(),
+            c if c == self.keys.cancel => self.mode = InputMode::Normal,
+            _ => {}
+        }
+    }
+
+    fn handle_capture_key(&mut self, key: KeyEvent) {
+        if let Some(action) = self.capture_action.take() {
+            match key.code {
+                c if c == self.keys.cancel => {
+                    self.mode = InputMode::KeyBindings;
+                }
+                code => {
+                    self.keys.set(action, code);
+                    self.keys.save();
+                    self.mode = InputMode::KeyBindings;
+                }
+            }
+        }
+    }
+
     /// Handles a terminal event.
     ///
     /// # Errors
@@ -534,6 +789,8 @@ impl App {
             match self.mode {
                 InputMode::Normal => self.handle_normal_key(key),
                 InputMode::Loading => self.handle_loading_key(key),
+                InputMode::KeyBindings => self.handle_keybindings_key(key),
+                InputMode::KeyCapture => self.handle_capture_key(key),
                 InputMode::EditingNote
                 | InputMode::EditingSection
                 | InputMode::EditingExistingNote
@@ -710,5 +967,15 @@ mod tests {
         app.handle_event(&right).unwrap();
         app.handle_event(&enter).unwrap();
         assert_eq!(app.notes[0].text, "aXbc");
+    }
+
+    #[test]
+    fn change_keybinding() {
+        let mut keys = KeyBindings::default();
+        keys.set(Action::Save, KeyCode::Char('z'));
+        keys.save();
+        let loaded = KeyBindings::load_or_default();
+        assert_eq!(loaded.get(Action::Save), KeyCode::Char('z'));
+        let _ = std::fs::remove_file(KeyBindings::config_path_for_test());
     }
 }
