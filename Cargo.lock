@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "real_time_note_taker"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "assert_cmd",
  "chrono",
