@@ -137,6 +137,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Thick)
+                .border_style(Style::default().fg(Color::LightBlue))
                 .title("Notes"),
         )
         .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
@@ -212,7 +213,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         key_to_string(app.keys.bindings),
         key_to_string(app.keys.quit)
     ))];
-    let help = Paragraph::new(Line::from(help));
+    let help = Paragraph::new(Line::from(help)).style(Style::default().fg(Color::LightCyan));
     f.render_widget(help, chunks[2]);
 
     if matches!(app.mode(), InputMode::Loading) {
@@ -232,10 +233,14 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         let block = Block::default()
             .borders(Borders::ALL)
             .title("Select File")
-            .border_type(BorderType::Plain);
-        let list = List::new(items)
-            .block(block)
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(Color::LightMagenta));
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(Color::LightMagenta)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD),
+        );
         f.render_stateful_widget(list, area, &mut state);
     }
 
@@ -250,10 +255,14 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         let block = Block::default()
             .borders(Borders::ALL)
             .title("Key Bindings")
-            .border_type(BorderType::Plain);
-        let list = List::new(items)
-            .block(block)
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(Color::LightMagenta));
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(Color::LightMagenta)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD),
+        );
         f.render_stateful_widget(list, area, &mut state);
     } else if matches!(app.mode(), InputMode::KeyCapture) {
         if let Some(action) = app.capture_action {
@@ -268,11 +277,9 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             f.render_widget(msg, area);
         }
     } else if matches!(app.mode(), InputMode::ConfirmReplace) {
-        if let (Some(key), Some(new_action), Some(conflict)) = (
-            app.pending_key,
-            app.pending_action,
-            app.pending_conflict,
-        ) {
+        if let (Some(key), Some(new_action), Some(conflict)) =
+            (app.pending_key, app.pending_action, app.pending_conflict)
+        {
             let area = centered_rect(60, 20, f.area());
             let msg = Paragraph::new(Line::from(vec![Span::raw(format!(
                 "Bind {} to {} and unbind from {}?",
