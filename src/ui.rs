@@ -186,7 +186,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::Loading
     );
 
-    let mut input_block = Block::default()
+    let input_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Thick)
         .title(input_title)
