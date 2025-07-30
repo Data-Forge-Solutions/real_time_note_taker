@@ -17,10 +17,12 @@
 //! ```
 
 mod app;
+mod key_utils;
 mod theme;
 mod ui;
 
 pub use app::{Action, App, AppError, Entry, InputMode, Note, Section};
+pub use key_utils::{key_to_string, string_to_key};
 use std::io;
 pub use theme::{Theme, ThemeName};
 
@@ -48,7 +50,8 @@ pub use theme::{Theme, ThemeName};
 /// Propagates any terminal initialization or rendering errors.
 ///
 /// # See also
-/// [`App::new`], [`App::save_to_file`]
+/// [`App::new`], [`App::save_to_file`], [`ui::init_terminal`], [`ui::run_ui`],
+/// [`ui::restore_terminal`]
 pub fn run(app: App) -> io::Result<App> {
     let mut terminal = ui::init_terminal()?;
     let res = ui::run_ui(&mut terminal, app);
