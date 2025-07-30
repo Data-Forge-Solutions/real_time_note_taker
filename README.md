@@ -16,6 +16,8 @@
 - Edit existing entries
 - Save and load notes from CSV
 - Fully keyboard driven with customizable bindings
+- Manual time hacks for syncing with external clocks
+- Current time with source indicator shown in the status line
 
 ## Installation
 

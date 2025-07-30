@@ -180,6 +180,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
         InputMode::KeyBindings => "Key Bindings".to_string(),
         InputMode::ThemeSelect => "Select Theme".to_string(),
+        InputMode::TimeHack => "Time Hack - HH:MM:SS[.mmm]".to_string(),
         InputMode::KeyCapture => "Set Key".to_string(),
         InputMode::ConfirmReplace => "Confirm".to_string(),
         InputMode::BindWarning => "Warning".to_string(),
@@ -194,6 +195,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
+            | InputMode::TimeHack
     );
 
     let input_block = Block::default()
@@ -218,6 +220,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
+            | InputMode::TimeHack
     ) {
         let offset = u16::try_from(app.cursor()).unwrap_or(u16::MAX);
         f.set_cursor_position((
@@ -227,60 +230,107 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     }
     f.render_widget(input, chunks[1]);
 
-    let help_spans = vec![
-        Span::styled(
-            key_to_string(app.keys.new_note),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":New ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.new_section),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":Section ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.edit),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":Edit ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.up),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.down),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(" ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.save),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":Save ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.load),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":Load ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.bindings),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":Keys ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.theme),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":Theme ", Style::default().fg(theme.help_desc)),
-        Span::styled(
-            key_to_string(app.keys.quit),
-            Style::default().fg(theme.help_key),
-        ),
-        Span::styled(":Quit", Style::default().fg(theme.help_desc)),
-    ];
+    let help_spans = if matches!(app.mode(), InputMode::TimeHack) {
+        vec![
+            Span::styled("Enter", Style::default().fg(theme.help_key)),
+            Span::styled(":Begin time hack ", Style::default().fg(theme.help_desc)),
+            Span::styled("r", Style::default().fg(theme.help_key)),
+            Span::styled(
+                ":Reset to system time ",
+                Style::default().fg(theme.help_desc),
+            ),
+            Span::styled(
+                key_to_string(app.keys.cancel),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(
+                ":Exit time hack setup",
+                Style::default().fg(theme.help_desc),
+            ),
+        ]
+    } else {
+        vec![
+            Span::styled(
+                key_to_string(app.keys.new_note),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":New ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.new_section),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Section ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.edit),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Edit ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.up),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.down),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(" ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.save),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Save ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.load),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Load ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.bindings),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Keys ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.theme),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Theme ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.time_hack),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Hack ", Style::default().fg(theme.help_desc)),
+            Span::styled(
+                key_to_string(app.keys.quit),
+                Style::default().fg(theme.help_key),
+            ),
+            Span::styled(":Quit", Style::default().fg(theme.help_desc)),
+        ]
+    };
+    let now = app.current_time();
+    let time_label = format!("{} Source: {}", now.format("%H:%M:%S"), app.time_source());
+    let time_width = u16::try_from(time_label.len()).unwrap_or(0);
+    let left_width = chunks[2].width.saturating_sub(time_width);
+    let areas = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(left_width),
+            Constraint::Length(time_width),
+        ])
+        .split(chunks[2]);
+
     let help = Paragraph::new(Line::from(help_spans));
-    f.render_widget(help, chunks[2]);
+    f.render_widget(help, areas[0]);
+    let time_line = Line::from(vec![
+        Span::styled(
+            now.format("%H:%M:%S").to_string(),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(" Source: ", Style::default().fg(theme.help_desc)),
+        Span::styled(app.time_source(), Style::default().fg(theme.help_key)),
+    ]);
+    let time_widget = Paragraph::new(time_line).alignment(Alignment::Right);
+    f.render_widget(time_widget, areas[1]);
 
     if matches!(app.mode(), InputMode::Loading) {
         let area = centered_rect(60, 60, f.area());
