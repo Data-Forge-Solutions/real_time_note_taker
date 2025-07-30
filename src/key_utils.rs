@@ -20,7 +20,7 @@ use crossterm::event::KeyCode;
 ///
 /// # See also
 /// [`string_to_key`]
-
+#[must_use]
 pub fn key_to_string(key: KeyCode) -> String {
     match key {
         KeyCode::Char(c) => c.to_string(),
@@ -52,6 +52,7 @@ pub fn key_to_string(key: KeyCode) -> String {
 ///
 /// # See also
 /// [`key_to_string`]
+#[must_use]
 pub fn string_to_key(s: &str) -> Option<KeyCode> {
     match s {
         "Enter" => Some(KeyCode::Enter),
