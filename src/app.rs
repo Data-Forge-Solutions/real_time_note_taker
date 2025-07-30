@@ -362,7 +362,6 @@ pub enum AppError {
 ///
 /// `App` stores all user facing data such as the list of notes, current input
 /// buffer and UI navigation state.  It can be persisted to disk using
-/// [`save_to_file`] and restored with [`load_from_file`].
 #[derive(Debug)]
 pub struct App {
     /// Collected entries in the order they were created.
