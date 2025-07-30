@@ -8,6 +8,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+use crate::ThemeName;
+
 fn key_to_string(key: KeyCode) -> String {
     match key {
         KeyCode::Char(c) => c.to_string(),
@@ -34,6 +36,10 @@ fn string_to_key(s: &str) -> Option<KeyCode> {
         c if c.len() == 1 => c.chars().next().map(KeyCode::Char),
         _ => None,
     }
+}
+
+fn default_theme_key() -> String {
+    key_to_string(KeyCode::Char('t'))
 }
 
 /// Represents a single note with timestamp.
@@ -84,6 +90,8 @@ pub enum InputMode {
     KeyCapture,
     /// Confirming replacement of an existing binding.
     ConfirmReplace,
+    /// Selecting a color theme.
+    ThemeSelect,
 }
 
 /// Actions that can be bound to keys.
@@ -99,10 +107,11 @@ pub enum Action {
     Quit,
     Cancel,
     Bindings,
+    Theme,
 }
 
 impl Action {
-    pub const ALL: [Action; 10] = [
+    pub const ALL: [Action; 11] = [
         Action::Up,
         Action::Down,
         Action::Edit,
@@ -113,6 +122,7 @@ impl Action {
         Action::Quit,
         Action::Cancel,
         Action::Bindings,
+        Action::Theme,
     ];
 }
 
@@ -129,6 +139,7 @@ impl std::fmt::Display for Action {
             Action::Quit => "Quit",
             Action::Cancel => "Cancel",
             Action::Bindings => "Key Menu",
+            Action::Theme => "Theme Menu",
         };
         write!(f, "{name}")
     }
@@ -157,6 +168,8 @@ pub struct KeyBindings {
     pub cancel: KeyCode,
     /// Open the key bindings menu.
     pub bindings: KeyCode,
+    /// Open the theme selection menu.
+    pub theme: KeyCode,
 }
 
 impl Default for KeyBindings {
@@ -172,6 +185,7 @@ impl Default for KeyBindings {
             quit: KeyCode::Char('q'),
             cancel: KeyCode::Esc,
             bindings: KeyCode::Char('b'),
+            theme: KeyCode::Char('t'),
         }
     }
 }
@@ -226,6 +240,7 @@ impl KeyBindings {
             Action::Quit => self.quit,
             Action::Cancel => self.cancel,
             Action::Bindings => self.bindings,
+            Action::Theme => self.theme,
         }
     }
 
@@ -242,6 +257,7 @@ impl KeyBindings {
             Action::Quit => self.quit = key,
             Action::Cancel => self.cancel = key,
             Action::Bindings => self.bindings = key,
+            Action::Theme => self.theme = key,
         }
     }
 
@@ -268,6 +284,8 @@ impl KeyBindings {
             Some(Action::Cancel)
         } else if self.bindings == key {
             Some(Action::Bindings)
+        } else if self.theme == key {
+            Some(Action::Theme)
         } else {
             None
         }
@@ -286,6 +304,8 @@ struct KeyBindingsConfig {
     quit: String,
     cancel: String,
     bindings: String,
+    #[serde(default = "default_theme_key")]
+    theme: String,
 }
 
 impl From<KeyBindings> for KeyBindingsConfig {
@@ -301,6 +321,7 @@ impl From<KeyBindings> for KeyBindingsConfig {
             quit: key_to_string(k.quit),
             cancel: key_to_string(k.cancel),
             bindings: key_to_string(k.bindings),
+            theme: key_to_string(k.theme),
         }
     }
 }
@@ -318,6 +339,7 @@ impl From<KeyBindingsConfig> for KeyBindings {
             quit: string_to_key(&c.quit).unwrap_or(KeyCode::Char('q')),
             cancel: string_to_key(&c.cancel).unwrap_or(KeyCode::Esc),
             bindings: string_to_key(&c.bindings).unwrap_or(KeyCode::Char('b')),
+            theme: string_to_key(&c.theme).unwrap_or(KeyCode::Char('t')),
         }
     }
 }
@@ -377,6 +399,10 @@ pub struct App {
     pub pending_action: Option<Action>,
     /// Existing action that currently uses the pending key.
     pub pending_conflict: Option<Action>,
+    /// Selected color theme.
+    pub theme: ThemeName,
+    /// Selected index when choosing a theme.
+    pub theme_selected: usize,
 }
 
 impl Default for App {
@@ -401,6 +427,8 @@ impl Default for App {
             pending_key: None,
             pending_action: None,
             pending_conflict: None,
+            theme: ThemeName::load_or_default(),
+            theme_selected: 0,
         }
     }
 }
@@ -439,6 +467,12 @@ impl App {
     #[must_use]
     pub fn keybindings(&self) -> &KeyBindings {
         &self.keys
+    }
+
+    /// Returns the active theme configuration.
+    #[must_use]
+    pub fn theme(&self) -> crate::Theme {
+        self.theme.theme()
     }
 
     /// Returns current input mode.
@@ -560,6 +594,15 @@ impl App {
     pub fn start_keybindings(&mut self) {
         self.keybind_selected = 0;
         self.mode = InputMode::KeyBindings;
+    }
+
+    /// Open the theme selection menu.
+    pub fn start_theme_menu(&mut self) {
+        self.theme_selected = ThemeName::ALL
+            .iter()
+            .position(|t| *t == self.theme)
+            .unwrap_or(0);
+        self.mode = InputMode::ThemeSelect;
     }
 
     fn start_capture_binding(&mut self) {
@@ -705,6 +748,7 @@ impl App {
             c if c == self.keys.save => self.start_save(),
             c if c == self.keys.load => self.start_load(),
             c if c == self.keys.bindings => self.start_keybindings(),
+            c if c == self.keys.theme => self.start_theme_menu(),
             _ => {}
         }
     }
@@ -731,7 +775,8 @@ impl App {
                 | InputMode::Loading
                 | InputMode::KeyBindings
                 | InputMode::KeyCapture
-                | InputMode::ConfirmReplace => {}
+                | InputMode::ConfirmReplace
+                | InputMode::ThemeSelect => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char(c)
@@ -855,6 +900,30 @@ impl App {
         }
     }
 
+    fn handle_theme_key(&mut self, key: KeyEvent) {
+        match key.code {
+            c if c == self.keys.up => {
+                if self.theme_selected > 0 {
+                    self.theme_selected -= 1;
+                }
+            }
+            c if c == self.keys.down => {
+                if self.theme_selected + 1 < ThemeName::ALL.len() {
+                    self.theme_selected += 1;
+                }
+            }
+            KeyCode::Enter => {
+                if let Some(t) = ThemeName::ALL.get(self.theme_selected).copied() {
+                    self.theme = t;
+                    t.save();
+                }
+                self.mode = InputMode::Normal;
+            }
+            c if c == self.keys.cancel => self.mode = InputMode::Normal,
+            _ => {}
+        }
+    }
+
     /// Handles a terminal event.
     ///
     /// # Errors
@@ -867,11 +936,12 @@ impl App {
                 InputMode::KeyBindings => self.handle_keybindings_key(key),
                 InputMode::KeyCapture => self.handle_capture_key(key),
                 InputMode::ConfirmReplace => self.handle_confirm_key(key),
+                InputMode::ThemeSelect => self.handle_theme_key(key),
                 InputMode::EditingNote
-                    | InputMode::EditingSection
-                    | InputMode::EditingExistingNote
-                    | InputMode::EditingExistingSection
-                    | InputMode::Saving => self.handle_editing_key(key),
+                | InputMode::EditingSection
+                | InputMode::EditingExistingNote
+                | InputMode::EditingExistingSection
+                | InputMode::Saving => self.handle_editing_key(key),
             }
         }
         Ok(())

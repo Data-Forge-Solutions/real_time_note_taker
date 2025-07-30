@@ -6,14 +6,14 @@ use crossterm::terminal::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
 use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
 
-use crate::{Action, App, Entry, InputMode};
+use crate::{Action, App, Entry, InputMode, ThemeName};
 
 fn key_to_string(key: KeyCode) -> String {
     match key {
@@ -98,6 +98,7 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
 
 #[allow(clippy::too_many_lines)]
 fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
+    let theme = app.theme();
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
@@ -118,15 +119,17 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             Entry::Note(n) => ListItem::new(Line::from(vec![
                 Span::styled(
                     n.timestamp.format("%H:%M:%S%.3f").to_string(),
-                    Style::default().add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme.timestamp_fg)
+                        .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" - "),
-                Span::raw(&n.text),
+                Span::styled(&n.text, Style::default().fg(theme.note_fg)),
             ])),
             Entry::Section(s) => ListItem::new(Line::from(vec![Span::styled(
                 &s.title,
                 Style::default()
-                    .fg(Color::Cyan)
+                    .fg(theme.section_fg)
                     .add_modifier(Modifier::BOLD),
             )])),
         })
@@ -137,9 +140,18 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Thick)
-                .title("Notes"),
+                .border_style(Style::default().fg(theme.notes_border))
+                .title(Span::styled(
+                    "Notes",
+                    Style::default().fg(theme.notes_title),
+                )),
         )
-        .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+        .highlight_style(
+            Style::default()
+                .bg(theme.notes_highlight_bg)
+                .fg(theme.notes_highlight_fg)
+                .add_modifier(Modifier::BOLD),
+        );
 
     let visible_height = usize::from(chunks[0].height.saturating_sub(2));
     let offset = app.entries.len().saturating_sub(visible_height);
@@ -161,16 +173,13 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::Saving => format!("Save File - {}", app.save_dir.display()),
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
         InputMode::KeyBindings => "Key Bindings".to_string(),
+        InputMode::ThemeSelect => "Select Theme".to_string(),
         InputMode::KeyCapture => "Set Key".to_string(),
         InputMode::ConfirmReplace => "Confirm".to_string(),
         InputMode::Normal => "Input".to_string(),
     };
 
-    let mut input_block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Thick)
-        .title(input_title);
-    if matches!(
+    let editing = matches!(
         app.mode(),
         InputMode::EditingNote
             | InputMode::EditingSection
@@ -178,9 +187,20 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::EditingExistingSection
             | InputMode::Saving
             | InputMode::Loading
-    ) {
-        input_block = input_block.style(Style::default().fg(Color::Yellow));
-    }
+    );
+
+    let input_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Thick)
+        .border_style(Style::default().fg(if editing {
+            theme.editing_fg
+        } else {
+            theme.input_fg
+        }))
+        .title(Span::styled(
+            input_title,
+            Style::default().fg(theme.input_title),
+        ));
 
     let input = Paragraph::new(app.input()).block(input_block);
     if matches!(
@@ -200,19 +220,59 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     }
     f.render_widget(input, chunks[1]);
 
-    let help = vec![Span::raw(format!(
-        "{}:New {}:Section {}:Edit {}:{} {}:Save {}:Load {}:Keys {}:Quit",
-        key_to_string(app.keys.new_note),
-        key_to_string(app.keys.new_section),
-        key_to_string(app.keys.edit),
-        key_to_string(app.keys.up),
-        key_to_string(app.keys.down),
-        key_to_string(app.keys.save),
-        key_to_string(app.keys.load),
-        key_to_string(app.keys.bindings),
-        key_to_string(app.keys.quit)
-    ))];
-    let help = Paragraph::new(Line::from(help));
+    let help_spans = vec![
+        Span::styled(
+            key_to_string(app.keys.new_note),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":New ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.new_section),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Section ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.edit),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Edit ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.up),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.down),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(" ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.save),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Save ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.load),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Load ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.bindings),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Keys ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.theme),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Theme ", Style::default().fg(theme.help_desc)),
+        Span::styled(
+            key_to_string(app.keys.quit),
+            Style::default().fg(theme.help_key),
+        ),
+        Span::styled(":Quit", Style::default().fg(theme.help_desc)),
+    ];
+    let help = Paragraph::new(Line::from(help_spans));
     f.render_widget(help, chunks[2]);
 
     if matches!(app.mode(), InputMode::Loading) {
@@ -231,11 +291,18 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         }
         let block = Block::default()
             .borders(Borders::ALL)
-            .title("Select File")
-            .border_type(BorderType::Plain);
-        let list = List::new(items)
-            .block(block)
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+            .title(Span::styled(
+                "Select File",
+                Style::default().fg(theme.overlay_title),
+            ))
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(theme.overlay_border));
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(theme.overlay_highlight_bg)
+                .fg(theme.overlay_highlight_fg)
+                .add_modifier(Modifier::BOLD),
+        );
         f.render_stateful_widget(list, area, &mut state);
     }
 
@@ -243,17 +310,58 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         let area = centered_rect(60, 60, f.area());
         let items: Vec<ListItem> = Action::ALL
             .iter()
-            .map(|a| ListItem::new(format!("{}: {}", a, key_to_string(app.keys.get(*a)))))
+            .map(|a| {
+                let key = key_to_string(app.keys.get(*a));
+                ListItem::new(Line::from(vec![
+                    Span::styled(format!("{a}: "), Style::default().fg(theme.help_desc)),
+                    Span::styled(key, Style::default().fg(theme.help_key)),
+                ]))
+            })
             .collect();
         let mut state = ListState::default();
         state.select(Some(app.keybind_selected));
         let block = Block::default()
             .borders(Borders::ALL)
-            .title("Key Bindings")
-            .border_type(BorderType::Plain);
-        let list = List::new(items)
-            .block(block)
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+            .title(Span::styled(
+                "Key Bindings",
+                Style::default().fg(theme.overlay_title),
+            ))
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(theme.overlay_border));
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(theme.overlay_highlight_bg)
+                .fg(theme.overlay_highlight_fg)
+                .add_modifier(Modifier::BOLD),
+        );
+        f.render_stateful_widget(list, area, &mut state);
+    } else if matches!(app.mode(), InputMode::ThemeSelect) {
+        let area = centered_rect(60, 60, f.area());
+        let items: Vec<ListItem> = ThemeName::ALL
+            .iter()
+            .map(|t| {
+                ListItem::new(Span::styled(
+                    t.display_name(),
+                    Style::default().fg(theme.overlay_text),
+                ))
+            })
+            .collect();
+        let mut state = ListState::default();
+        state.select(Some(app.theme_selected));
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(Span::styled(
+                "Select Theme",
+                Style::default().fg(theme.overlay_title),
+            ))
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(theme.overlay_border));
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(theme.overlay_highlight_bg)
+                .fg(theme.overlay_highlight_fg)
+                .add_modifier(Modifier::BOLD),
+        );
         f.render_stateful_widget(list, area, &mut state);
     } else if matches!(app.mode(), InputMode::KeyCapture) {
         if let Some(action) = app.capture_action {
@@ -264,15 +372,21 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 key_to_string(app.keys.get(action))
             ))]))
             .alignment(Alignment::Center)
-            .block(Block::default().borders(Borders::ALL).title("Set Key"));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme.overlay_border))
+                    .title(Span::styled(
+                        "Set Key",
+                        Style::default().fg(theme.overlay_title),
+                    )),
+            );
             f.render_widget(msg, area);
         }
     } else if matches!(app.mode(), InputMode::ConfirmReplace) {
-        if let (Some(key), Some(new_action), Some(conflict)) = (
-            app.pending_key,
-            app.pending_action,
-            app.pending_conflict,
-        ) {
+        if let (Some(key), Some(new_action), Some(conflict)) =
+            (app.pending_key, app.pending_action, app.pending_conflict)
+        {
             let area = centered_rect(60, 20, f.area());
             let msg = Paragraph::new(Line::from(vec![Span::raw(format!(
                 "Bind {} to {} and unbind from {}?",
@@ -281,7 +395,15 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 conflict
             ))]))
             .alignment(Alignment::Center)
-            .block(Block::default().borders(Borders::ALL).title("Confirm"));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme.overlay_border))
+                    .title(Span::styled(
+                        "Confirm",
+                        Style::default().fg(theme.overlay_title),
+                    )),
+            );
             f.render_widget(msg, area);
         }
     }

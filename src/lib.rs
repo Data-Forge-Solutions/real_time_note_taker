@@ -17,10 +17,12 @@
 //! ```
 
 mod app;
+mod theme;
 mod ui;
 
 pub use app::{Action, App, AppError, Entry, InputMode, Note, Section};
 use std::io;
+pub use theme::{Theme, ThemeName};
 
 /// Runs the real-time note taking application.
 ///
