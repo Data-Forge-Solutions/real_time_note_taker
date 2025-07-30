@@ -66,3 +66,34 @@ pub fn string_to_key(s: &str) -> Option<KeyCode> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn key_string_round_trip() {
+        let keys = [
+            KeyCode::Enter,
+            KeyCode::Esc,
+            KeyCode::Char('x'),
+            KeyCode::Up,
+            KeyCode::Null,
+        ];
+        for k in keys {
+            let s = key_to_string(k);
+            assert_eq!(string_to_key(&s), Some(k));
+        }
+    }
+
+    #[test]
+    fn string_to_key_invalid() {
+        assert_eq!(string_to_key("invalid"), None);
+    }
+
+    #[test]
+    fn key_to_string_unknown() {
+        let out = key_to_string(KeyCode::F(1));
+        assert!(!out.is_empty());
+    }
+}
