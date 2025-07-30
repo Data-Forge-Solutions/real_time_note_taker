@@ -301,7 +301,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 Style::default().fg(theme.overlay_title),
             ))
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(theme.overlay_border));
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
                 .bg(theme.overlay_highlight_bg)
@@ -332,7 +333,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 Style::default().fg(theme.overlay_title),
             ))
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(theme.overlay_border));
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
                 .bg(theme.overlay_highlight_bg)
@@ -360,7 +362,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 Style::default().fg(theme.overlay_title),
             ))
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(theme.overlay_border));
+            .border_style(Style::default().fg(theme.overlay_border))
+            .style(Style::default().bg(theme.overlay_bg));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
                 .bg(theme.overlay_highlight_bg)
@@ -384,7 +387,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                     .title(Span::styled(
                         "Set Key",
                         Style::default().fg(theme.overlay_title),
-                    )),
+                    ))
+                    .style(Style::default().bg(theme.overlay_bg)),
             );
             f.render_widget(msg, area);
         }
@@ -407,7 +411,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                     .title(Span::styled(
                         "Confirm",
                         Style::default().fg(theme.overlay_title),
-                    )),
+                    ))
+                    .style(Style::default().bg(theme.overlay_bg)),
             );
             f.render_widget(msg, area);
         }
@@ -426,7 +431,8 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
                 .title(Span::styled(
                     "Warning",
                     Style::default().fg(theme.overlay_title),
-                )),
+                ))
+                .style(Style::default().bg(theme.overlay_bg)),
         );
         f.render_widget(msg, area);
     }
