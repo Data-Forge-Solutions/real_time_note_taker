@@ -435,6 +435,20 @@ impl Default for App {
 
 impl App {
     /// Returns the directory where files are saved by default.
+    ///
+    /// # Returns
+    /// Path to the directory used for storing note CSV files.
+    ///
+    /// # Examples
+    /// ```
+    /// use real_time_note_taker::App;
+    ///
+    /// let path = App::default_save_dir();
+    /// println!("{:?}", path);
+    /// ```
+    ///
+    /// # See also
+    /// [`App::save_to_file`], [`App::load_from_file`]
     #[must_use]
     pub fn default_save_dir() -> PathBuf {
         if let Some(dirs) = ProjectDirs::from("com", "DFS", "rtnt") {
@@ -443,7 +457,18 @@ impl App {
             std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
         }
     }
-    /// Creates a new [`App`].
+    /// Creates a new [`App`] with default settings.
+    ///
+    /// # Returns
+    /// A fresh [`App`] ready to be passed to [`crate::run`].
+    ///
+    /// # Examples
+    /// ```
+    /// use real_time_note_taker::App;
+    ///
+    /// let app = App::new();
+    /// assert!(app.notes.is_empty());
+    /// ```
     #[must_use]
     pub fn new() -> Self {
         Self::default()

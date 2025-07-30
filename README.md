@@ -1,14 +1,24 @@
 # Real Time Note Taker
 
-Real Time Note Taker (RTNT) is a terminal user interface application for recording timestamped notes. Notes are grouped into optional sections and stored in CSV format for easy processing by other tools. All active key bindings are shown at the bottom of the interface.
+**RTNT** is a terminal user interface for taking timestamped notes. Notes can be organized into titled sections and exported to CSV for further processing. All active key bindings are always visible at the bottom of the UI.
+
+![Demo of RTNT](readme_resources/demo.gif)
 
 ## Features
 
 - Millisecond accurate timestamps
 - Section markers to organize discussions
 - Edit existing entries
-- Save and load notes to CSV files
+- Save and load notes from CSV
 - Fully keyboard driven with customizable bindings
+
+## Installation
+
+Add the binary with Cargo once the crate is published:
+
+```bash
+cargo install real_time_note_taker
+```
 
 ## Running
 
@@ -16,17 +26,13 @@ Real Time Note Taker (RTNT) is a terminal user interface application for recordi
 cargo run --release
 ```
 
-### Custom key bindings
-
-Press the key shown as `Keys` in the help line to open the key binding menu. Use
-the arrow keys to select an action and press <kbd>Enter</kbd> to assign a new
-key. If the chosen key is already bound you will be asked to confirm replacing
-that binding. Bindings are stored in `keybindings.json` inside the application
-configuration directory (typically `~/.config/rtnt`).
-
 ### Automatic file mode
 
-Passing `--file <PATH>` to the binary will load notes from the given file and automatically save them back on exit.
+Passing `--file <PATH>` will load notes from the given file and save them back on exit.
+
+### Custom key bindings
+
+Press the key shown as `Keys` in the help line to open the binding menu. Use the arrow keys to select an action and press <kbd>Enter</kbd> to assign a new key. Bindings are stored in `keybindings.json` inside the configuration directory (typically `~/.config/rtnt`).
 
 ## Library Usage
 
