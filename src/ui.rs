@@ -396,13 +396,16 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             .border_type(BorderType::Plain)
             .border_style(Style::default().fg(theme.overlay_border))
             .style(Style::default().bg(theme.overlay_bg));
-        let input = Paragraph::new(app.input())
+        let text = vec![
+            Line::from("Enter time as HH:MM:SS[.mmm]"),
+            Line::from(app.input()),
+        ];
+        let input = Paragraph::new(text)
             .style(Style::default().fg(theme.overlay_text))
-            .alignment(Alignment::Center)
             .block(block);
         f.render_widget(input, area);
         let offset = u16::try_from(app.cursor()).unwrap_or(u16::MAX);
-        f.set_cursor_position((area.x.saturating_add(offset + 1), area.y + 1));
+        f.set_cursor_position((area.x.saturating_add(offset + 1), area.y + 2));
     } else if matches!(app.mode(), InputMode::KeyCapture) {
         if let Some(action) = app.capture_action {
             let area = centered_rect(60, 20, f.area());
