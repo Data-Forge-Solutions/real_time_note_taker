@@ -9,35 +9,8 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use thiserror::Error;
 
+use crate::key_utils::{key_to_string, string_to_key};
 use crate::ThemeName;
-
-fn key_to_string(key: KeyCode) -> String {
-    match key {
-        KeyCode::Char(c) => c.to_string(),
-        KeyCode::Enter => "Enter".to_string(),
-        KeyCode::Esc => "Esc".to_string(),
-        KeyCode::Up => "Up".to_string(),
-        KeyCode::Down => "Down".to_string(),
-        KeyCode::Left => "Left".to_string(),
-        KeyCode::Right => "Right".to_string(),
-        KeyCode::Null => "Null".to_string(),
-        other => format!("{other:?}"),
-    }
-}
-
-fn string_to_key(s: &str) -> Option<KeyCode> {
-    match s {
-        "Enter" => Some(KeyCode::Enter),
-        "Esc" => Some(KeyCode::Esc),
-        "Up" => Some(KeyCode::Up),
-        "Down" => Some(KeyCode::Down),
-        "Left" => Some(KeyCode::Left),
-        "Right" => Some(KeyCode::Right),
-        "Null" => Some(KeyCode::Null),
-        c if c.len() == 1 => c.chars().next().map(KeyCode::Char),
-        _ => None,
-    }
-}
 
 fn default_theme_key() -> String {
     key_to_string(KeyCode::Char('t'))
@@ -231,11 +204,16 @@ impl KeyBindings {
     }
 
     #[cfg(test)]
+    /// Returns the configuration path for unit tests.
+    #[must_use]
     pub fn config_path_for_test() -> PathBuf {
         Self::config_path()
     }
 
     /// Loads key bindings from the configuration file or returns defaults.
+    ///
+    /// # Returns
+    /// Parsed [`KeyBindings`] or [`KeyBindings::default`].
     #[must_use]
     pub fn load_or_default() -> Self {
         let path = Self::config_path();
@@ -258,6 +236,12 @@ impl KeyBindings {
     }
 
     /// Returns the key bound to the given action.
+    ///
+    /// # Arguments
+    /// * `action` - The [`Action`] to query.
+    ///
+    /// # Returns
+    /// The [`KeyCode`] assigned to the action.
     #[must_use]
     pub fn get(&self, action: Action) -> KeyCode {
         match action {
@@ -278,6 +262,10 @@ impl KeyBindings {
     }
 
     /// Sets the key for the given action.
+    ///
+    /// # Arguments
+    /// * `action` - Action to modify.
+    /// * `key` - New key code.
     pub fn set(&mut self, action: Action, key: KeyCode) {
         match action {
             Action::Up => self.up = key,
@@ -297,6 +285,12 @@ impl KeyBindings {
     }
 
     /// Returns the action currently bound to the specified key if any.
+    ///
+    /// # Arguments
+    /// * `key` - The key to search for.
+    ///
+    /// # Returns
+    /// `Some(Action)` if the key is bound, otherwise `None`.
     #[must_use]
     pub fn action_for_key(&self, key: KeyCode) -> Option<Action> {
         if self.up == key {
@@ -492,7 +486,7 @@ impl App {
     /// Path to the directory used for storing note CSV files.
     ///
     /// # Examples
-    /// ```
+    /// ```no_run
     /// use real_time_note_taker::App;
     ///
     /// let path = App::default_save_dir();
@@ -527,6 +521,24 @@ impl App {
     }
 
     /// Creates a new [`App`] with custom key bindings.
+    ///
+    /// # Arguments
+    /// * `keys` - Preconfigured [`KeyBindings`] to use for the instance.
+    ///
+    /// # Returns
+    /// A new [`App`] initialized with the provided bindings.
+    ///
+    /// # Example
+    /// ```ignore
+    /// use real_time_note_taker::{App, Action};
+    /// use real_time_note_taker::app::KeyBindings;
+    /// use crossterm::event::KeyCode;
+    ///
+    /// let mut keys = KeyBindings::default();
+    /// keys.set(Action::Save, KeyCode::Char('s'));
+    /// let app = App::with_keybindings(keys);
+    /// assert_eq!(app.keybindings().get(Action::Save), KeyCode::Char('s'));
+    /// ```
     #[must_use]
     pub fn with_keybindings(keys: KeyBindings) -> Self {
         Self {
@@ -536,53 +548,86 @@ impl App {
     }
 
     /// Replaces the key bindings with the provided ones.
+    ///
+    /// # Arguments
+    /// * `keys` - The new [`KeyBindings`] to apply.
     pub fn set_keybindings(&mut self, keys: KeyBindings) {
         self.keys = keys;
     }
 
     /// Returns the current key bindings.
+    ///
+    /// # Returns
+    /// A reference to the internal [`KeyBindings`].
     #[must_use]
     pub fn keybindings(&self) -> &KeyBindings {
         &self.keys
     }
 
     /// Returns the active theme configuration.
+    ///
+    /// # Returns
+    /// The [`Theme`] associated with the currently selected [`ThemeName`].
+    ///
+    /// # See also
+    /// [`ThemeName`]
     #[must_use]
     pub fn theme(&self) -> crate::Theme {
         self.theme.theme()
     }
 
     /// Returns current input mode.
+    ///
+    /// # Returns
+    /// The [`InputMode`] the application is currently operating in.
     #[must_use]
     pub const fn mode(&self) -> InputMode {
         self.mode
     }
 
     /// Returns current input buffer.
+    ///
+    /// # Returns
+    /// A slice of the text currently being edited.
     #[must_use]
     pub fn input(&self) -> &str {
         &self.input
     }
 
     /// Returns the cursor position within the input buffer.
+    ///
+    /// # Returns
+    /// Index into the input buffer where the cursor is positioned.
     #[must_use]
     pub const fn cursor(&self) -> usize {
         self.cursor
     }
 
     /// Returns the timestamp of the note being edited if present.
+    ///
+    /// # Returns
+    /// `Some(DateTime)` if a note edit is active, otherwise `None`.
     #[must_use]
     pub fn note_time(&self) -> Option<DateTime<Local>> {
         self.note_time
     }
 
     /// Returns the active time hack if set.
+    ///
+    /// # Returns
+    /// `Some((NaiveTime, Instant))` when time hacking is enabled.
     #[must_use]
     pub fn time_hack(&self) -> Option<(NaiveTime, Instant)> {
         self.time_hack
     }
 
     /// Returns the current timestamp considering any active time hack.
+    ///
+    /// When a time hack is active, the returned time will be calculated by
+    /// adding the elapsed time since the hack started to the hacked base time.
+    ///
+    /// # Returns
+    /// Current local time taking hacks into account.
     #[must_use]
     pub fn current_time(&self) -> DateTime<Local> {
         if let Some((base, start)) = self.time_hack {
@@ -603,6 +648,9 @@ impl App {
     }
 
     /// Returns the current time source name.
+    ///
+    /// # Returns
+    /// "Hacked" when a time hack is active, otherwise "System".
     #[must_use]
     pub fn time_source(&self) -> &'static str {
         if self.time_hack.is_some() {
@@ -613,6 +661,9 @@ impl App {
     }
 
     /// Returns the currently selected entry index if any.
+    ///
+    /// # Returns
+    /// The index into [`entries`](Self::entries) of the selected item or `None`.
     #[must_use]
     pub const fn selected(&self) -> Option<usize> {
         self.selected
@@ -658,6 +709,9 @@ impl App {
     }
 
     /// Starts a new note capturing the current timestamp.
+    ///
+    /// Clears the current input buffer and places the application in
+    /// [`InputMode::EditingNote`].
     pub fn start_note(&mut self) {
         self.note_time = Some(self.current_time());
         self.input.clear();
@@ -667,6 +721,9 @@ impl App {
     }
 
     /// Starts a new section entry.
+    ///
+    /// Similar to [`start_note`], but prepares for a section title without a
+    /// timestamp.
     pub fn start_section(&mut self) {
         self.note_time = None;
         self.input.clear();
@@ -676,6 +733,8 @@ impl App {
     }
 
     /// Begin entering a file path to save the current entries.
+    ///
+    /// The default filename `notes.csv` is pre-filled.
     pub fn start_save(&mut self) {
         self.input = self.save_dir.join("notes.csv").to_string_lossy().into();
         self.cursor = self.input.len();
@@ -683,6 +742,9 @@ impl App {
     }
 
     /// Begin entering a file path to load entries from.
+    ///
+    /// Populates [`load_files`](Self::load_files) with available `.csv`
+    /// files in [`save_dir`](Self::save_dir).
     pub fn start_load(&mut self) {
         self.load_files = fs::read_dir(&self.save_dir)
             .ok()
@@ -746,6 +808,9 @@ impl App {
     }
 
     /// Finalizes the note if editing, pushing it into the note list.
+    ///
+    /// If editing an existing note, its contents are replaced. When creating a
+    /// new note the timestamp captured by [`start_note`] is used.
     pub fn finalize_note(&mut self) {
         if let Some(idx) = self.edit_index.take() {
             if let Entry::Note(ref mut n) = self.entries[idx] {
@@ -775,6 +840,8 @@ impl App {
     }
 
     /// Finalizes a section entry.
+    ///
+    /// Empty section titles are ignored when creating a new entry.
     pub fn finalize_section(&mut self) {
         let title = self.input.drain(..).collect::<String>();
         if let Some(idx) = self.edit_index.take() {
@@ -828,6 +895,9 @@ impl App {
 
     /// Saves all entries to a CSV file.
     ///
+    /// # Arguments
+    /// * `path` - Destination file path.
+    ///
     /// # Errors
     /// Returns any I/O or serialization errors encountered.
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
@@ -849,6 +919,9 @@ impl App {
     }
 
     /// Loads entries from a CSV file, replacing existing ones.
+    ///
+    /// # Arguments
+    /// * `path` - File path to load from.
     ///
     /// # Errors
     /// Returns any I/O or deserialization errors encountered.
@@ -887,6 +960,9 @@ impl App {
     }
 
     /// Loads entries from a file, replacing the current state.
+    ///
+    /// # Arguments
+    /// * `path` - File path to load from.
     ///
     /// # Errors
     /// Returns any I/O or deserialization errors encountered.

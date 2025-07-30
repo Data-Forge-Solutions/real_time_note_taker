@@ -35,11 +35,13 @@ impl ThemeName {
 
     #[cfg(test)]
     #[must_use]
+    /// Returns the configuration path used during testing.
     pub fn config_path_for_test() -> PathBuf {
         Self::config_path()
     }
 
     #[must_use]
+    /// Loads the theme configuration from disk or returns [`ThemeName::Default`].
     pub fn load_or_default() -> Self {
         let path = Self::config_path();
         if let Ok(data) = fs::read_to_string(&path) {
@@ -50,6 +52,7 @@ impl ThemeName {
         Self::Default
     }
 
+    /// Persists the theme configuration to disk.
     pub fn save(self) {
         if let Some(parent) = Self::config_path().parent() {
             let _ = fs::create_dir_all(parent);
@@ -60,6 +63,7 @@ impl ThemeName {
     }
 
     #[must_use]
+    /// Human readable display name for the theme.
     pub fn display_name(self) -> &'static str {
         match self {
             Self::Default => "Default",
@@ -96,6 +100,7 @@ pub struct Theme {
 
 impl ThemeName {
     #[must_use]
+    /// Returns the [`Theme`] struct for this theme name.
     pub fn theme(self) -> Theme {
         match self {
             Self::Default => Theme {

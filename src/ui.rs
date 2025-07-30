@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic)]
-use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
+use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
@@ -15,20 +15,8 @@ use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
 
+use crate::key_utils::key_to_string;
 use crate::{Action, App, Entry, InputMode, ThemeName};
-
-fn key_to_string(key: KeyCode) -> String {
-    match key {
-        KeyCode::Char(c) => c.to_string(),
-        KeyCode::Enter => "Enter".to_string(),
-        KeyCode::Esc => "Esc".to_string(),
-        KeyCode::Up => "Up".to_string(),
-        KeyCode::Down => "Down".to_string(),
-        KeyCode::Left => "Left".to_string(),
-        KeyCode::Right => "Right".to_string(),
-        other => format!("{other:?}"),
-    }
-}
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
@@ -56,6 +44,12 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 }
 
 /// Initializes the terminal for TUI rendering.
+///
+/// # Returns
+/// A configured [`Terminal`] ready for drawing.
+///
+/// # Errors
+/// Propagates any terminal initialization errors.
 pub fn init_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -65,6 +59,12 @@ pub fn init_terminal() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
 }
 
 /// Restores the terminal to its previous state.
+///
+/// # Arguments
+/// * `terminal` - The terminal previously created by [`init_terminal`].
+///
+/// # Errors
+/// Propagates any I/O errors from the terminal backend.
 pub fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> io::Result<()> {
     disable_raw_mode()?;
     execute!(
@@ -77,6 +77,19 @@ pub fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> io
 }
 
 /// Runs the UI event loop with the provided application state.
+///
+/// # Arguments
+/// * `terminal` - Terminal instance created by [`init_terminal`].
+/// * `app` - Initial application state to drive the UI.
+///
+/// # Returns
+/// The state of [`App`] after the UI finishes.
+///
+/// # Errors
+/// Propagates any terminal I/O errors.
+///
+/// # See also
+/// [`crate::run`]
 pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -> io::Result<App> {
     let tick_rate = Duration::from_millis(200);
     let mut last_tick = Instant::now();
