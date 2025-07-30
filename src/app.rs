@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic)]
-use chrono::{DateTime, Duration, Local, NaiveTime, TimeZone};
+use chrono::{DateTime, Duration, Local, LocalResult, NaiveTime, TimeZone};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -562,8 +562,15 @@ impl App {
         if let Some((base, start)) = self.time_hack {
             let delta = Instant::now().saturating_duration_since(start);
             let base_dt = Local::now().date_naive().and_time(base);
-            let base = Local.from_local_datetime(&base_dt).unwrap();
-            base + Duration::from_std(delta).unwrap()
+            let base = match Local.from_local_datetime(&base_dt) {
+                LocalResult::Single(dt) | LocalResult::Ambiguous(dt, _) => dt,
+                LocalResult::None => Local::now(),
+            };
+            if let Ok(d) = Duration::from_std(delta) {
+                base + d
+            } else {
+                base
+            }
         } else {
             Local::now()
         }
