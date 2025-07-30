@@ -1,8 +1,8 @@
 [package]
 name = "real_time_note_taker"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
-authors = ["Andrew Sims, andrew.sims@dateforgesolutions.com"]
+authors = ["Andrew Sims, andrew.sims@dataforgesolutions.com"]
 description = "A terminal UI tool to track meeting cost in real time based on employee salaries."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Data-Forge-Solutions/real_time_note_taker"
