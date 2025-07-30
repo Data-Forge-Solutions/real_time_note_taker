@@ -13,7 +13,7 @@ use ratatui::Terminal;
 use std::io::{self, Stdout};
 use std::time::{Duration, Instant};
 
-use crate::{Action, App, Entry, InputMode};
+use crate::{Action, App, Entry, InputMode, ThemeName};
 
 fn key_to_string(key: KeyCode) -> String {
     match key {
@@ -98,6 +98,7 @@ pub fn run_ui(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -
 
 #[allow(clippy::too_many_lines)]
 fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
+    let theme = app.theme();
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
@@ -137,7 +138,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Thick)
-                .border_style(Style::default().fg(Color::LightBlue))
+                .border_style(Style::default().fg(theme.notes_border))
                 .title("Notes"),
         )
         .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
@@ -162,6 +163,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         InputMode::Saving => format!("Save File - {}", app.save_dir.display()),
         InputMode::Loading => format!("Load File - {}", app.save_dir.display()),
         InputMode::KeyBindings => "Key Bindings".to_string(),
+        InputMode::ThemeSelect => "Select Theme".to_string(),
         InputMode::KeyCapture => "Set Key".to_string(),
         InputMode::ConfirmReplace => "Confirm".to_string(),
         InputMode::Normal => "Input".to_string(),
@@ -180,7 +182,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             | InputMode::Saving
             | InputMode::Loading
     ) {
-        input_block = input_block.style(Style::default().fg(Color::Yellow));
+        input_block = input_block.style(Style::default().fg(theme.editing_fg));
     }
 
     let input = Paragraph::new(app.input()).block(input_block);
@@ -202,7 +204,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
     f.render_widget(input, chunks[1]);
 
     let help = vec![Span::raw(format!(
-        "{}:New {}:Section {}:Edit {}:{} {}:Save {}:Load {}:Keys {}:Quit",
+        "{}:New {}:Section {}:Edit {}:{} {}:Save {}:Load {}:Keys {}:Theme {}:Quit",
         key_to_string(app.keys.new_note),
         key_to_string(app.keys.new_section),
         key_to_string(app.keys.edit),
@@ -211,9 +213,10 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         key_to_string(app.keys.save),
         key_to_string(app.keys.load),
         key_to_string(app.keys.bindings),
+        key_to_string(app.keys.theme),
         key_to_string(app.keys.quit)
     ))];
-    let help = Paragraph::new(Line::from(help)).style(Style::default().fg(Color::LightCyan));
+    let help = Paragraph::new(Line::from(help)).style(Style::default().fg(theme.help_fg));
     f.render_widget(help, chunks[2]);
 
     if matches!(app.mode(), InputMode::Loading) {
@@ -234,11 +237,11 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             .borders(Borders::ALL)
             .title("Select File")
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(Color::LightMagenta));
+            .border_style(Style::default().fg(theme.overlay_border));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
-                .bg(Color::LightMagenta)
-                .fg(Color::Black)
+                .bg(theme.overlay_highlight_bg)
+                .fg(theme.overlay_highlight_fg)
                 .add_modifier(Modifier::BOLD),
         );
         f.render_stateful_widget(list, area, &mut state);
@@ -256,11 +259,31 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             .borders(Borders::ALL)
             .title("Key Bindings")
             .border_type(BorderType::Plain)
-            .border_style(Style::default().fg(Color::LightMagenta));
+            .border_style(Style::default().fg(theme.overlay_border));
         let list = List::new(items).block(block).highlight_style(
             Style::default()
-                .bg(Color::LightMagenta)
-                .fg(Color::Black)
+                .bg(theme.overlay_highlight_bg)
+                .fg(theme.overlay_highlight_fg)
+                .add_modifier(Modifier::BOLD),
+        );
+        f.render_stateful_widget(list, area, &mut state);
+    } else if matches!(app.mode(), InputMode::ThemeSelect) {
+        let area = centered_rect(60, 60, f.area());
+        let items: Vec<ListItem> = ThemeName::ALL
+            .iter()
+            .map(|t| ListItem::new(t.display_name()))
+            .collect();
+        let mut state = ListState::default();
+        state.select(Some(app.theme_selected));
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title("Select Theme")
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().fg(theme.overlay_border));
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(theme.overlay_highlight_bg)
+                .fg(theme.overlay_highlight_fg)
                 .add_modifier(Modifier::BOLD),
         );
         f.render_stateful_widget(list, area, &mut state);
