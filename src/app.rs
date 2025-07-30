@@ -47,6 +47,10 @@ fn default_time_hack_key() -> String {
     key_to_string(KeyCode::Char('h'))
 }
 
+fn default_file_key() -> String {
+    key_to_string(KeyCode::Char('f'))
+}
+
 /// Represents a single note with timestamp.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Note {
@@ -89,6 +93,10 @@ pub enum InputMode {
     Saving,
     /// Prompting for a file path to load entries.
     Loading,
+    /// Selecting an action from the file management menu.
+    FileMenu,
+    /// Prompting for a new file name and creating it.
+    NewFile,
     /// Entering a time hack value.
     TimeHack,
     /// Selecting a key binding to change.
@@ -113,6 +121,8 @@ pub enum Action {
     NewSection,
     Save,
     Load,
+    /// Open the file management menu.
+    FileMenu,
     Quit,
     Cancel,
     Bindings,
@@ -122,7 +132,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Action; 12] = [
+    pub const ALL: [Action; 13] = [
         Action::Up,
         Action::Down,
         Action::Edit,
@@ -130,6 +140,7 @@ impl Action {
         Action::NewSection,
         Action::Save,
         Action::Load,
+        Action::FileMenu,
         Action::Quit,
         Action::Cancel,
         Action::Bindings,
@@ -148,6 +159,7 @@ impl std::fmt::Display for Action {
             Action::NewSection => "New Section",
             Action::Save => "Save",
             Action::Load => "Load",
+            Action::FileMenu => "File Menu",
             Action::Quit => "Quit",
             Action::Cancel => "Cancel",
             Action::Bindings => "Key Menu",
@@ -175,6 +187,8 @@ pub struct KeyBindings {
     pub save: KeyCode,
     /// Begin loading entries from a file.
     pub load: KeyCode,
+    /// Open the file management menu.
+    pub file_menu: KeyCode,
     /// Quit the application.
     pub quit: KeyCode,
     /// Cancel the current edit.
@@ -197,6 +211,7 @@ impl Default for KeyBindings {
             new_section: KeyCode::Char('s'),
             save: KeyCode::Char('w'),
             load: KeyCode::Char('l'),
+            file_menu: KeyCode::Char('f'),
             quit: KeyCode::Char('q'),
             cancel: KeyCode::Esc,
             bindings: KeyCode::Char('b'),
@@ -253,6 +268,7 @@ impl KeyBindings {
             Action::NewSection => self.new_section,
             Action::Save => self.save,
             Action::Load => self.load,
+            Action::FileMenu => self.file_menu,
             Action::Quit => self.quit,
             Action::Cancel => self.cancel,
             Action::Bindings => self.bindings,
@@ -271,6 +287,7 @@ impl KeyBindings {
             Action::NewSection => self.new_section = key,
             Action::Save => self.save = key,
             Action::Load => self.load = key,
+            Action::FileMenu => self.file_menu = key,
             Action::Quit => self.quit = key,
             Action::Cancel => self.cancel = key,
             Action::Bindings => self.bindings = key,
@@ -296,6 +313,8 @@ impl KeyBindings {
             Some(Action::Save)
         } else if self.load == key {
             Some(Action::Load)
+        } else if self.file_menu == key {
+            Some(Action::FileMenu)
         } else if self.quit == key {
             Some(Action::Quit)
         } else if self.cancel == key {
@@ -321,6 +340,8 @@ struct KeyBindingsConfig {
     new_section: String,
     save: String,
     load: String,
+    #[serde(default = "default_file_key")]
+    file_menu: String,
     quit: String,
     cancel: String,
     bindings: String,
@@ -340,6 +361,7 @@ impl From<KeyBindings> for KeyBindingsConfig {
             new_section: key_to_string(k.new_section),
             save: key_to_string(k.save),
             load: key_to_string(k.load),
+            file_menu: key_to_string(k.file_menu),
             quit: key_to_string(k.quit),
             cancel: key_to_string(k.cancel),
             bindings: key_to_string(k.bindings),
@@ -359,6 +381,7 @@ impl From<KeyBindingsConfig> for KeyBindings {
             new_section: string_to_key(&c.new_section).unwrap_or(KeyCode::Char('s')),
             save: string_to_key(&c.save).unwrap_or(KeyCode::Char('w')),
             load: string_to_key(&c.load).unwrap_or(KeyCode::Char('l')),
+            file_menu: string_to_key(&c.file_menu).unwrap_or(KeyCode::Char('f')),
             quit: string_to_key(&c.quit).unwrap_or(KeyCode::Char('q')),
             cancel: string_to_key(&c.cancel).unwrap_or(KeyCode::Esc),
             bindings: string_to_key(&c.bindings).unwrap_or(KeyCode::Char('b')),
@@ -416,6 +439,8 @@ pub struct App {
     pub load_selected: usize,
     /// Selected binding index when editing key bindings.
     pub keybind_selected: usize,
+    /// Selected option when using the file menu.
+    pub file_menu_selected: usize,
     /// Action being re-bound when capturing a key.
     pub capture_action: Option<Action>,
     /// Key to assign after confirmation.
@@ -449,6 +474,7 @@ impl Default for App {
             load_files: Vec::new(),
             load_selected: 0,
             keybind_selected: 0,
+            file_menu_selected: 0,
             capture_action: None,
             pending_key: None,
             pending_action: None,
@@ -677,6 +703,12 @@ impl App {
         self.mode = InputMode::Loading;
     }
 
+    /// Open the file management menu.
+    pub fn start_file_menu(&mut self) {
+        self.file_menu_selected = 0;
+        self.mode = InputMode::FileMenu;
+    }
+
     /// Open the key bindings menu.
     pub fn start_keybindings(&mut self) {
         self.keybind_selected = 0;
@@ -697,6 +729,13 @@ impl App {
         self.input.clear();
         self.cursor = 0;
         self.mode = InputMode::TimeHack;
+    }
+
+    /// Prompt for a new file name and create a blank file.
+    pub fn start_new_file(&mut self) {
+        self.input = self.save_dir.join("notes.csv").to_string_lossy().into();
+        self.cursor = self.input.len();
+        self.mode = InputMode::NewFile;
     }
 
     fn start_capture_binding(&mut self) {
@@ -867,6 +906,7 @@ impl App {
             c if c == self.keys.new_section => self.start_section(),
             c if c == self.keys.save => self.start_save(),
             c if c == self.keys.load => self.start_load(),
+            c if c == self.keys.file_menu => self.start_file_menu(),
             c if c == self.keys.bindings => self.start_keybindings(),
             c if c == self.keys.theme => self.start_theme_menu(),
             c if c == self.keys.time_hack => self.start_time_hack(),
@@ -892,6 +932,16 @@ impl App {
                     self.cursor = 0;
                     self.mode = InputMode::Normal;
                 }
+                InputMode::NewFile => {
+                    let path: String = self.input.drain(..).collect();
+                    if !path.is_empty() {
+                        self.entries.clear();
+                        self.notes.clear();
+                        self.save_to_file(&path).ok();
+                    }
+                    self.cursor = 0;
+                    self.mode = InputMode::Normal;
+                }
                 InputMode::TimeHack => {
                     self.finalize_time_hack();
                 }
@@ -901,7 +951,8 @@ impl App {
                 | InputMode::KeyCapture
                 | InputMode::ConfirmReplace
                 | InputMode::ThemeSelect
-                | InputMode::BindWarning => {}
+                | InputMode::BindWarning
+                | InputMode::FileMenu => {}
             },
             c if c == self.keys.cancel => self.cancel_entry(),
             KeyCode::Char('r') if matches!(self.mode, InputMode::TimeHack) => {
@@ -1069,6 +1120,31 @@ impl App {
         }
     }
 
+    fn handle_file_menu_key(&mut self, key: KeyEvent) {
+        match key.code {
+            c if c == self.keys.up => {
+                if self.file_menu_selected > 0 {
+                    self.file_menu_selected -= 1;
+                }
+            }
+            c if c == self.keys.down => {
+                if self.file_menu_selected + 1 < 3 {
+                    self.file_menu_selected += 1;
+                }
+            }
+            code if code == KeyCode::Enter || code == self.keys.new_note => {
+                match self.file_menu_selected {
+                    0 => self.start_new_file(),
+                    1 => self.start_save(),
+                    2 => self.start_load(),
+                    _ => {}
+                }
+            }
+            c if c == self.keys.cancel => self.mode = InputMode::Normal,
+            _ => {}
+        }
+    }
+
     /// Handles a terminal event.
     ///
     /// # Errors
@@ -1086,11 +1162,13 @@ impl App {
                 InputMode::ConfirmReplace => self.handle_confirm_key(key),
                 InputMode::BindWarning => self.handle_bind_warning_key(key),
                 InputMode::ThemeSelect => self.handle_theme_key(key),
+                InputMode::FileMenu => self.handle_file_menu_key(key),
                 InputMode::EditingNote
                 | InputMode::EditingSection
                 | InputMode::EditingExistingNote
                 | InputMode::EditingExistingSection
                 | InputMode::Saving
+                | InputMode::NewFile
                 | InputMode::TimeHack => self.handle_editing_key(key),
             }
         }
