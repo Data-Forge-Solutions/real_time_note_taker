@@ -445,11 +445,15 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         f.render_widget(Clear, area);
         let items: Vec<ListItem> = ThemeName::ALL
             .iter()
-            .map(|t| {
-                ListItem::new(Span::styled(
-                    t.display_name(),
-                    Style::default().fg(theme.overlay_text),
-                ))
+            .enumerate()
+            .map(|(idx, t)| {
+                let item_theme = t.theme();
+                let base_style = if idx == app.theme_selected {
+                    Style::default().fg(item_theme.secondary_color())
+                } else {
+                    Style::default().fg(item_theme.primary_color())
+                };
+                ListItem::new(Span::styled(t.display_name(), base_style))
             })
             .collect();
         let mut state = ListState::default();
@@ -466,7 +470,6 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         let list = List::new(items).block(block).highlight_style(
             Style::default()
                 .bg(theme.overlay_highlight_bg)
-                .fg(theme.overlay_highlight_fg)
                 .add_modifier(Modifier::BOLD),
         );
         f.render_stateful_widget(list, area, &mut state);

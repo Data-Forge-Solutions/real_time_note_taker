@@ -97,6 +97,8 @@ pub struct Theme {
     pub editing_fg: Color,
     pub editing_title: Color,
     pub overlay_text: Color,
+    primary: Color,
+    secondary: Color,
 }
 
 impl Theme {
@@ -122,7 +124,19 @@ impl Theme {
             editing_fg: secondary,
             editing_title: primary,
             overlay_text: primary,
+            primary,
+            secondary,
         }
+    }
+
+    #[must_use]
+    pub const fn primary_color(&self) -> Color {
+        self.primary
+    }
+
+    #[must_use]
+    pub const fn secondary_color(&self) -> Color {
+        self.secondary
     }
 }
 
