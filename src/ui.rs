@@ -448,12 +448,13 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             .enumerate()
             .map(|(idx, t)| {
                 let item_theme = t.theme();
-                let base_style = if idx == app.theme_selected {
-                    Style::default().fg(item_theme.secondary_color())
+                let base_style = Style::default().fg(item_theme.primary_color());
+                let style = if idx == app.theme_selected {
+                    base_style.bg(item_theme.secondary_color())
                 } else {
-                    Style::default().fg(item_theme.primary_color())
+                    base_style
                 };
-                ListItem::new(Span::styled(t.display_name(), base_style))
+                ListItem::new(Span::styled(t.display_name(), style))
             })
             .collect();
         let mut state = ListState::default();
@@ -467,11 +468,9 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
             .border_type(BorderType::Plain)
             .border_style(Style::default().fg(theme.overlay_border))
             .style(Style::default().bg(theme.overlay_bg));
-        let list = List::new(items).block(block).highlight_style(
-            Style::default()
-                .bg(theme.overlay_highlight_bg)
-                .add_modifier(Modifier::BOLD),
-        );
+        let list = List::new(items)
+            .block(block)
+            .highlight_style(Style::default().add_modifier(Modifier::BOLD));
         f.render_stateful_widget(list, area, &mut state);
     } else if matches!(app.mode(), InputMode::KeyCapture) {
         if let Some(action) = app.capture_action {
