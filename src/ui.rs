@@ -224,7 +224,11 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         }))
         .title(Span::styled(
             input_title,
-            Style::default().fg(theme.input_title),
+            Style::default().fg(if editing {
+                theme.editing_title
+            } else {
+                theme.input_title
+            }),
         ));
 
     let input = Paragraph::new(app.input()).block(input_block);
