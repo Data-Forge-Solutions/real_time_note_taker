@@ -131,7 +131,7 @@ impl ThemeName {
     /// Returns the [`Theme`] struct for this theme name.
     pub fn theme(self) -> Theme {
         match self {
-            Self::Default => Theme::from_colors(Color::White, Color::Black, Color::Black),
+            Self::Default => Theme::from_colors(Color::White, Color::White, Color::Black),
             Self::Matrix => Theme::from_colors(Color::LightGreen, Color::Green, Color::Black),
             Self::CyanCrush => Theme::from_colors(Color::Cyan, Color::LightMagenta, Color::Black),
             Self::Embercore => Theme::from_colors(Color::Red, Color::Yellow, Color::Black),
