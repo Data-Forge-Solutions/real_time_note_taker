@@ -95,6 +95,7 @@ pub struct Theme {
     pub overlay_highlight_fg: Color,
     pub overlay_bg: Color,
     pub editing_fg: Color,
+    pub editing_title: Color,
     pub overlay_text: Color,
 }
 
@@ -121,6 +122,7 @@ impl ThemeName {
                 overlay_highlight_fg: Color::Black,
                 overlay_bg: Color::Black,
                 editing_fg: Color::White,
+                editing_title: Color::Black,
                 overlay_text: Color::White,
             },
             Self::Matrix => Theme {
@@ -141,6 +143,7 @@ impl ThemeName {
                 overlay_highlight_fg: Color::Black,
                 overlay_bg: Color::Black,
                 editing_fg: Color::LightGreen,
+                editing_title: Color::Green,
                 overlay_text: Color::LightGreen,
             },
             Self::CyanCrush => Theme {
@@ -161,6 +164,7 @@ impl ThemeName {
                 overlay_highlight_fg: Color::Cyan,
                 overlay_bg: Color::Black,
                 editing_fg: Color::LightMagenta,
+                editing_title: Color::Cyan,
                 overlay_text: Color::Cyan,
             },
             Self::Embercore => Theme {
@@ -181,6 +185,7 @@ impl ThemeName {
                 overlay_highlight_fg: Color::Yellow,
                 overlay_bg: Color::Black,
                 editing_fg: Color::Yellow,
+                editing_title: Color::Red,
                 overlay_text: Color::LightRed,
             },
             Self::ToxicOrchid => Theme {
@@ -201,6 +206,7 @@ impl ThemeName {
                 overlay_highlight_fg: Color::LightMagenta,
                 overlay_bg: Color::Black,
                 editing_fg: Color::LightMagenta,
+                editing_title: Color::LightGreen,
                 overlay_text: Color::LightGreen,
             },
             Self::Coldfire => Theme {
@@ -221,6 +227,7 @@ impl ThemeName {
                 overlay_highlight_fg: Color::LightBlue,
                 overlay_bg: Color::Black,
                 editing_fg: Color::LightBlue,
+                editing_title: Color::LightRed,
                 overlay_text: Color::LightRed,
             },
         }
