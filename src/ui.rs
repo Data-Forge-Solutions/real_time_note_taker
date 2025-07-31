@@ -445,12 +445,7 @@ fn draw(f: &mut ratatui::Frame<'_>, app: &App) {
         f.render_widget(Clear, area);
         let items: Vec<ListItem> = ThemeName::ALL
             .iter()
-            .map(|t| {
-                ListItem::new(Span::styled(
-                    t.display_name(),
-                    Style::default().fg(theme.overlay_text),
-                ))
-            })
+            .map(|t| ListItem::new(t.styled_display_name()))
             .collect();
         let mut state = ListState::default();
         state.select(Some(app.theme_selected));

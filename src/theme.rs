@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_lines)]
 use directories::ProjectDirs;
-use ratatui::style::Color;
+use ratatui::style::{Color, Style};
+use ratatui::text::{Line, Span};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -73,6 +74,35 @@ impl ThemeName {
             Self::ToxicOrchid => "Toxic Orchid",
             Self::Coldfire => "Coldfire",
         }
+    }
+
+    #[must_use]
+    /// Returns the primary, secondary, and tertiary colors for this theme.
+    pub const fn colors(self) -> (Color, Color, Color) {
+        match self {
+            Self::Default => (Color::White, Color::Black, Color::Black),
+            Self::Matrix => (Color::LightGreen, Color::Green, Color::Black),
+            Self::CyanCrush => (Color::Cyan, Color::LightMagenta, Color::Black),
+            Self::Embercore => (Color::Red, Color::Yellow, Color::Black),
+            Self::ToxicOrchid => (Color::LightMagenta, Color::LightGreen, Color::Black),
+            Self::Coldfire => (Color::LightBlue, Color::LightRed, Color::Black),
+        }
+    }
+
+    #[must_use]
+    /// Formatted display name with alternating primary and secondary colors.
+    pub fn styled_display_name(self) -> Line<'static> {
+        let name = self.display_name();
+        let (primary, secondary, _) = self.colors();
+        let spans: Vec<Span> = name
+            .chars()
+            .enumerate()
+            .map(|(i, c)| {
+                let color = if i % 2 == 0 { primary } else { secondary };
+                Span::styled(c.to_string(), Style::from(color))
+            })
+            .collect();
+        Line::from(spans)
     }
 }
 
