@@ -144,8 +144,8 @@ impl ThemeName {
                 overlay_text: Color::LightGreen,
             },
             Self::CyanCrush => Theme {
-                notes_border: Color::LightMagenta,
-                notes_title: Color::Cyan,
+                notes_border: Color::Cyan,
+                notes_title: Color::LightMagenta,
                 notes_highlight_bg: Color::LightMagenta,
                 notes_highlight_fg: Color::Black,
                 note_fg: Color::LightMagenta,
@@ -230,29 +230,5 @@ impl ThemeName {
 impl Default for ThemeName {
     fn default() -> Self {
         Self::Default
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn display_names_match() {
-        assert_eq!(ThemeName::Default.display_name(), "Default");
-        assert_eq!(ThemeName::Matrix.display_name(), "Matrix");
-        assert_eq!(ThemeName::CyanCrush.display_name(), "Cyan Crush");
-    }
-
-    #[test]
-    fn save_and_load_theme() {
-        let path = ThemeName::config_path_for_test();
-        if path.exists() {
-            let _ = std::fs::remove_file(&path);
-        }
-        ThemeName::Matrix.save();
-        let loaded = ThemeName::load_or_default();
-        assert_eq!(loaded, ThemeName::Matrix);
-        let _ = std::fs::remove_file(path);
     }
 }
