@@ -105,22 +105,22 @@ impl Theme {
         Self {
             notes_border: primary,
             notes_title: secondary,
-            notes_highlight_bg: primary,
+            notes_highlight_bg: secondary,
             notes_highlight_fg: tertiary,
-            note_fg: primary,
-            section_fg: primary,
+            note_fg: secondary,
+            section_fg: secondary,
             timestamp_fg: primary,
             input_fg: primary,
             input_title: secondary,
-            help_key: primary,
-            help_desc: secondary,
+            help_key: secondary,
+            help_desc: primary,
             overlay_border: primary,
             overlay_title: secondary,
-            overlay_highlight_bg: primary,
-            overlay_highlight_fg: secondary,
+            overlay_highlight_bg: secondary,
+            overlay_highlight_fg: primary,
             overlay_bg: tertiary,
-            editing_fg: primary,
-            editing_title: secondary,
+            editing_fg: secondary,
+            editing_title: primary,
             overlay_text: primary,
         }
     }
@@ -133,7 +133,7 @@ impl ThemeName {
         match self {
             Self::Default => Theme::from_colors(Color::White, Color::Black, Color::Black),
             Self::Matrix => Theme::from_colors(Color::LightGreen, Color::Green, Color::Black),
-            Self::CyanCrush => Theme::from_colors(Color::LightMagenta, Color::Cyan, Color::Black),
+            Self::CyanCrush => Theme::from_colors(Color::Cyan, Color::LightMagenta, Color::Black),
             Self::Embercore => Theme::from_colors(Color::Red, Color::Yellow, Color::Black),
             Self::ToxicOrchid => {
                 Theme::from_colors(Color::LightMagenta, Color::LightGreen, Color::Black)
