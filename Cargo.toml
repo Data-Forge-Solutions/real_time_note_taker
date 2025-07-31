@@ -1,6 +1,6 @@
 [package]
 name = "real_time_note_taker"
-version = "0.1.5"
+version = "1.0.0"
 edition = "2021"
 authors = ["Andrew Sims, andrew.sims@dataforgesolutions.com"]
 description = "A terminal UI tool to take time stamped notes in real time."
