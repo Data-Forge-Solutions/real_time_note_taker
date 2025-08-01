@@ -12,3 +12,9 @@ fn runs_version() {
     let mut cmd = Command::cargo_bin("rtnt").unwrap();
     cmd.arg("--version").assert().success();
 }
+
+#[test]
+fn runs_lowercase_v() {
+    let mut cmd = Command::cargo_bin("rtnt").unwrap();
+    cmd.arg("-v").assert().success();
+}
