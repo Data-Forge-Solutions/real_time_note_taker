@@ -1,15 +1,12 @@
 #![warn(clippy::pedantic)]
 use clap::{ArgAction, Parser};
 use real_time_note_taker::{run, App};
-use qr2term::print_qr;
-
-const WEBSITE: &str = "https://dataforgesolutions.com/";
 
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Cli {
     /// Show version information
-    #[arg(short = 'v', long = "version-info", action = ArgAction::SetTrue)]
+    #[arg(short = 'v', long = "version-info", alias = "v", action = ArgAction::SetTrue)]
     version_info: bool,
 
     /// Load notes from this file and save them on exit
@@ -37,10 +34,6 @@ fn main() -> std::io::Result<()> {
 
 fn print_version_info() {
     println!("rtnt {}", env!("CARGO_PKG_VERSION"));
-    println!("{WEBSITE}");
-    if let Err(e) = print_qr(WEBSITE) {
-        eprintln!("Failed to generate QR code: {e}");
-    }
 }
 
 #[cfg(test)]

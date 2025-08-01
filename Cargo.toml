@@ -22,7 +22,6 @@ chrono = { version = "0.4", features = ["serde", "clock"] }
 clap = { version = "4", features = ["derive"] }
 directories = "5"
 serde_json = "1"
-qr2term = "0.3"
 
 [dev-dependencies]
 assert_cmd = "2.0"
