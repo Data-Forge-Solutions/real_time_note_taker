@@ -21,7 +21,7 @@ mod key_utils;
 mod theme;
 mod ui;
 
-pub use app::{Action, App, AppError, Entry, InputMode, Note, Section};
+pub use app::{Action, App, AppError, Entry, InputMode, KeyBindings, Note, Section};
 pub use key_utils::{key_to_string, string_to_key};
 use std::io;
 pub use theme::{Theme, ThemeName};

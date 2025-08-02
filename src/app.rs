@@ -217,7 +217,13 @@ impl KeyBindings {
     #[must_use]
     pub fn load_or_default() -> Self {
         let path = Self::config_path();
-        if let Ok(data) = fs::read_to_string(&path) {
+        Self::load_or_default_from(&path)
+    }
+
+    /// Loads key bindings from the provided file or returns defaults.
+    #[must_use]
+    pub fn load_or_default_from(path: &Path) -> Self {
+        if let Ok(data) = fs::read_to_string(path) {
             if let Ok(cfg) = serde_json::from_str::<KeyBindingsConfig>(&data) {
                 return cfg.into();
             }

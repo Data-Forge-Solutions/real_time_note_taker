@@ -10,17 +10,11 @@ fn runs_help() {
 #[test]
 fn runs_version() {
     let mut cmd = Command::cargo_bin("rtnt").unwrap();
-    cmd.arg("--version").assert().success();
+    cmd.arg("-V").assert().success();
 }
 
 #[test]
-fn runs_lowercase_v() {
+fn runs_verbose() {
     let mut cmd = Command::cargo_bin("rtnt").unwrap();
-    cmd.arg("-v").assert().success();
-}
-
-#[test]
-fn runs_double_dash_v() {
-    let mut cmd = Command::cargo_bin("rtnt").unwrap();
-    cmd.arg("--v").assert().success();
+    cmd.args(["-v", "--help"]).assert().success();
 }

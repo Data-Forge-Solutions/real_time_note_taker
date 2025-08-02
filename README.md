@@ -34,6 +34,13 @@ cargo install real_time_note_taker
 cargo run --release
 ```
 
+Additional CLI options are available:
+
+- `--save-dir <PATH>` to override the default save location
+- `--config <FILE>` to load key bindings from a custom file
+- `-v/--verbose` increase logging output
+- `completions <SHELL>` generate shell completion scripts
+
 ### Automatic file mode
 
 Passing `--file <PATH>` will load notes from the given file and save them back on exit.
@@ -41,6 +48,28 @@ Passing `--file <PATH>` will load notes from the given file and save them back o
 ### Custom key bindings
 
 Press the key shown as `Keys` in the help line to open the binding menu. Use the arrow keys to select an action and press <kbd>Enter</kbd> to assign a new key. Bindings are stored in `keybindings.json` inside the configuration directory (typically `~/.config/rtnt`).
+
+### Configuration file
+
+The `keybindings.json` file contains a mapping of actions to key names. An example configuration looks like:
+
+```json
+{
+  "up": "Up",
+  "down": "Down",
+  "edit": "e",
+  "new_note": "Enter",
+  "new_section": "s",
+  "save": "w",
+  "load": "l",
+  "file_menu": "f",
+  "quit": "q",
+  "cancel": "Esc",
+  "bindings": "b",
+  "theme": "t",
+  "time_hack": "h"
+}
+```
 
 ## Library Usage
 
