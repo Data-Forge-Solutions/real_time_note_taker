@@ -13,16 +13,18 @@ pub enum ThemeName {
     Embercore,
     ToxicOrchid,
     Coldfire,
+    American,
 }
 
 impl ThemeName {
-    pub const ALL: [ThemeName; 6] = [
+    pub const ALL: [ThemeName; 7] = [
         ThemeName::Default,
         ThemeName::Matrix,
         ThemeName::CyanCrush,
         ThemeName::Embercore,
         ThemeName::ToxicOrchid,
         ThemeName::Coldfire,
+        ThemeName::American,
     ];
 
     fn config_path() -> PathBuf {
@@ -72,6 +74,7 @@ impl ThemeName {
             Self::Embercore => "Embercore",
             Self::ToxicOrchid => "Toxic Orchid",
             Self::Coldfire => "Coldfire",
+            Self::American => "American",
         }
     }
 }
@@ -139,6 +142,7 @@ impl ThemeName {
                 Theme::from_colors(Color::LightMagenta, Color::LightGreen, Color::Black)
             }
             Self::Coldfire => Theme::from_colors(Color::LightBlue, Color::LightRed, Color::Black),
+            Self::American => Theme::from_colors(Color::Red, Color::White, Color::Blue),
         }
     }
 }
