@@ -34,6 +34,20 @@ cargo install real_time_note_taker
 cargo run --release
 ```
 
+### Container
+
+The checked-in `Containerfile` defines the Linux build and runtime environment and is
+compatible with both Podman and Docker:
+
+```bash
+podman build -t rtnt -f Containerfile .
+podman run --rm -it -v rtnt-notes:/notes rtnt --save-dir /notes
+```
+
+Replace `podman` with `docker` to use Docker. The named volume persists saved
+notes outside the container. Running the TUI requires an interactive terminal
+(`-it`).
+
 Additional CLI options are available:
 
 - `--save-dir <PATH>` to override the default save location

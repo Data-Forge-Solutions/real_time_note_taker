@@ -10,26 +10,13 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  container:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-      
-  test:
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install clippy
-      run: rustup component add clippy
-    - name: Run tests
-      run: cargo test --verbose
-    - name: Clippy pedantic
-      run: cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic
-    - name: Doc tests
-      run: cargo test --doc
+      - uses: actions/checkout@v4
+      - name: Run checks in the build environment
+        run: docker build --target test --tag rtnt:test --file Containerfile .
+      - name: Build runtime image
+        run: docker build --tag rtnt:${{ github.sha }} --file Containerfile .
+      - name: Smoke test runtime image
+        run: docker run --rm rtnt:${{ github.sha }} --help
