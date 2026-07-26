@@ -13,14 +13,7 @@ RUN mkdir src \
         target/release/deps/rtnt* target/release/rtnt
 
 COPY src ./src
-COPY tests ./tests
 RUN cargo build --locked --release
-
-FROM builder AS test
-RUN rustup component add clippy
-RUN cargo test --locked --all-targets \
-    && cargo test --locked --doc \
-    && cargo clippy --locked --all-targets --all-features -- -D warnings -W clippy::pedantic
 
 FROM debian:bookworm-slim AS runtime
 

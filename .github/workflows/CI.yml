@@ -10,12 +10,26 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  container:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run checks in the build environment
-        run: docker build --target test --tag rtnt:test --file Containerfile .
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Build
+        run: cargo build --locked --verbose
+      - name: Run tests
+        run: cargo test --locked --all-targets --verbose
+      - name: Run doc tests
+        run: cargo test --locked --doc
+      - name: Run Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings -W clippy::pedantic
+
+  container:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Build runtime image
         run: docker build --tag rtnt:${{ github.sha }} --file Containerfile .
       - name: Smoke test runtime image
