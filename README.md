@@ -53,6 +53,10 @@ CI runs Cargo checks in a container created from that stage, while keeping the
 commands themselves in the workflow rather than baking test execution into the
 image build.
 
+The build context intentionally uses `.dockerignore`: Podman supports that name,
+while Docker does not use `.containerignore`. Keeping the Docker-compatible name
+therefore lets the same context exclusions work with both tools.
+
 Additional CLI options are available:
 
 - `--save-dir <PATH>` to override the default save location
