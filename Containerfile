@@ -1,18 +1,17 @@
 # syntax=docker/dockerfile:1
 
-FROM rust:1.87-bookworm AS builder
+FROM rust:1.87-bookworm AS development
 
 WORKDIR /usr/src/rtnt
 
-# Fetch dependencies separately so source-only changes can reuse this layer.
-COPY Cargo.toml Cargo.lock ./
-RUN mkdir src \
-    && printf 'fn main() {}\n' > src/main.rs \
-    && cargo build --locked --release \
-    && rm -rf src target/release/deps/real_time_note_taker* \
-        target/release/deps/rtnt* target/release/rtnt
-
+# The development stage is the shared build and CI environment.
+RUN rustup component add clippy rustfmt
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+RUN cargo fetch --locked
 COPY src ./src
+COPY tests ./tests
+
+FROM development AS builder
 RUN cargo build --locked --release
 
 FROM debian:bookworm-slim AS runtime

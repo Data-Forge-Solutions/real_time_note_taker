@@ -48,6 +48,11 @@ Replace `podman` with `docker` to use Docker. The named volume persists saved
 notes outside the container. Running the TUI requires an interactive terminal
 (`-it`).
 
+The `development` build stage contains the pinned Rust toolchain and source tree.
+CI runs Cargo checks in a container created from that stage, while keeping the
+commands themselves in the workflow rather than baking test execution into the
+image build.
+
 Additional CLI options are available:
 
 - `--save-dir <PATH>` to override the default save location
